@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: MIT
+/**
+ * @file version.c.in
+ * @brief Implementation of functionality related to component versioning.
+ */
+#include "version.h"
+
+const char *cominitGetVersionString(void) {
+    return (sizeof("@COMINIT_VERSION_GIT@") > 1)
+               ? "@COMINIT_VERSION_MAJOR@.@COMINIT_VERSION_MINOR@.@COMINIT_VERSION_MICRO@.@COMINIT_VERSION_GIT@"
+               : "@COMINIT_VERSION_MAJOR@.@COMINIT_VERSION_MINOR@.@COMINIT_VERSION_MICRO@";
+}
