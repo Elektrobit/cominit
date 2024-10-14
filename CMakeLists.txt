@@ -49,7 +49,6 @@ endif()
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_C_FLAGS_RELEASE "-Os -DNODEBUG")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -Wl,--gc-sections")
 
 find_package(MbedTLS 2.28 REQUIRED)
 

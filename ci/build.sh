@@ -21,6 +21,7 @@ cmake -B $BASEDIR/build \
     -DCMAKE_VERBOSE_MAKEFILE=On \
     -DUNIT_TESTS=On \
     -DFAKE_HSM=On \
+    -DCMAKE_EXE_LINKER_FLAGS="-static -Wl,--gc-sections" \
     $BASEDIR
 make -C $BASEDIR/build
 cp $BASEDIR/build/src/cominit $BASEDIR/result/bin/aarch64
