@@ -1,3 +1,10 @@
+cominit (0.5.8-1) unstable; urgency=medium
+
+  * New upstream release: 0.5.8
+  * Add cominit-initramfs package.
+
+ -- Isaac True <isaac.true@emlix.com>  Mon, 14 Oct 2024 15:23:27 +0200
+
 cominit (0.5.7-1) unstable; urgency=medium
 
   * Initial release.

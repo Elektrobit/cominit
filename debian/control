@@ -21,6 +21,8 @@ Architecture: any
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},
+Suggests:
+ cominit-initramfs (= ${binary:Version}),
 Description: Initramfs tool to verify and mount the real rootfs from storage
  The resulting binary (cominit) expects to be run as the system init process
  out of an initramfs. Its purpose is to mount the rootfs partition, switch the
@@ -29,10 +31,34 @@ Description: Initramfs tool to verify and mount the real rootfs from storage
  integrity checking is supported through dm-verity for read-only and
  dm-integrity for writable variants.
  .
- If successful, cominitwill clean up after itself and exec into the rootfs
+ If successful, cominit will clean up after itself and exec into the rootfs
  init ([rootfs]/sbin/init). On any fatal error, cominit will try to exec into
- a rescue shell. This will be either [initramfs]/bin/sh if the error occured
- before switching the root or [rootfs]/bin/sh if it occured after.
+ a rescue shell. This will be either [initramfs]/bin/sh if the error occurred
+ before switching the root or [rootfs]/bin/sh if it occurred after.
+
+Package: cominit-initramfs
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ initramfs-tools,
+ cominit (= ${binary:Version}),
+Description: Initramfs-tools integration for cominit
+ The resulting binary (cominit) expects to be run as the system init process
+ out of an initramfs. Its purpose is to mount the rootfs partition, switch the
+ root and start the rootfs init. The rootfs filesystem may be read-only or
+ read-write using any filesystem supported by the Kernel in use. Continuous
+ integrity checking is supported through dm-verity for read-only and
+ dm-integrity for writable variants.
+ .
+ If successful, cominit will clean up after itself and exec into the rootfs
+ init ([rootfs]/sbin/init). On any fatal error, cominit will try to exec into
+ a rescue shell. This will be either [initramfs]/bin/sh if the error occurred
+ before switching the root or [rootfs]/bin/sh if it occurred after.
+ .
+ Initramfs-tools integration package. Install the public key that should be used
+ to verify the rootfs to /etc/rootfs_key_pub.pem and this will be copied into
+ the initramfs image.
 
 Package: cominit-tests
 Architecture: any
@@ -47,9 +73,9 @@ Description: Tests for cominit
  integrity checking is supported through dm-verity for read-only and
  dm-integrity for writable variants.
  .
- If successful, cominitwill clean up after itself and exec into the rootfs
+ If successful, cominit will clean up after itself and exec into the rootfs
  init ([rootfs]/sbin/init). On any fatal error, cominit will try to exec into
- a rescue shell. This will be either [initramfs]/bin/sh if the error occured
- before switching the root or [rootfs]/bin/sh if it occured after.
+ a rescue shell. This will be either [initramfs]/bin/sh if the error occurred
+ before switching the root or [rootfs]/bin/sh if it occurred after.
  .
  Test utility package.

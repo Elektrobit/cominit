@@ -1,0 +1,27 @@
+#!/bin/sh
+
+PREREQ=""
+
+prereqs()
+{
+        echo "$PREREQ"
+}
+
+case $1 in
+# get pre-requisites
+prereqs)
+        prereqs
+        exit 0
+        ;;
+esac
+
+. /usr/share/initramfs-tools/scripts/functions
+
+PUBKEY="/etc/rootfs_key_pub.pem"
+
+if [ -e "${PUBKEY}" ]; then
+    install -m0755 /usr/bin/cominit "$DESTDIR"/init
+    install -m0644 "${PUBKEY}" "${DESTDIR}${PUBKEY}"
+else
+    echo "${PUBKEY} not found. Not configuring cominit"
+fi

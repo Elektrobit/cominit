@@ -4,3 +4,9 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 %:
 	dh $@ --buildsystem=cmake --builddirectory=debian/build
+
+override_dh_auto_install:
+	dh_auto_install
+
+	install -Dm0755 $(CURDIR)/debian/initramfs-tools-hook \
+		$(CURDIR)/debian/tmp/usr/share/initramfs-tools/hooks/cominit
