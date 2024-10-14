@@ -1,0 +1,2 @@
+# This is intentionally embedded
+cominit: embedded-library mbedtls usr/bin/cominit

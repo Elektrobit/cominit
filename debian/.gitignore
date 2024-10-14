@@ -1,0 +1,8 @@
+/*.substvars
+/files
+/debhelper-build-stamp
+/cominit/
+/cominit-tests/
+/.debhelper/
+/tmp/
+/*.debhelper.log
