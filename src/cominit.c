@@ -142,7 +142,7 @@ int main(int argc, char *argv[], char *envp[]) {
         goto rescue;
     }
 
-    char *endPtr = stpncpy(rfsMeta.devicePath, lastArg, sizeof(rfsMeta.devicePath));
+    char *endPtr = stpncpy(rfsMeta.devicePath, lastArg, sizeof(rfsMeta.devicePath) - 1);
     if (*endPtr != '\0') {
         cominitErrPrint("Given rootfs location from command line (\'%s\') is too long.", lastArg);
         goto rescue;
