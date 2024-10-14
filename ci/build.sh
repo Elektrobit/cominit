@@ -26,12 +26,6 @@ cmake -B $BASEDIR/build \
 make -C $BASEDIR/build
 cp $BASEDIR/build/src/cominit $BASEDIR/result/bin/aarch64
 
-# build and copy aarch64 rpm
-CMAKE_TOOLCHAIN_FILE=$BASEDIR/ci/aarch64-toolchain.cmake \
-    make -C $BASEDIR/build rpmbuild
-cp -a packaging/rpmbuild/RPMS $BASEDIR/result
-cp -a packaging/rpmbuild/SRPMS $BASEDIR/result
-
 # build and copy documentation
 make -C $BASEDIR/build doxygen
 cp -a $BASEDIR/doc $BASEDIR/result

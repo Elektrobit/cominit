@@ -10,7 +10,6 @@ RUN apt-get update \
  && apt-get install -y sudo locales vim screen libncurses-dev \
     build-essential git python3-minimal cmake \
     gcc-aarch64-linux-gnu \
-    rpm \
     doxygen graphviz plantuml \
     clang llvm clang-tidy \
     qemu-user-static \
