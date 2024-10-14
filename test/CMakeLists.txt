@@ -14,7 +14,7 @@ function(create_unit_test)
     PRIVATE
     ${PARSED_ARGS_WRAPS}
     ${PARSED_ARGS_LIBRARIES}
-    cmocka
+    ${CMOCKA_LIBRARIES}
   )
 
   target_include_directories(
