@@ -51,7 +51,7 @@ set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_C_FLAGS_RELEASE "-Os -DNODEBUG")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -Wl,--gc-sections")
 
-find_package(MbedTLS 3.0 REQUIRED)
+find_package(MbedTLS 2.28 REQUIRED)
 
 add_compile_options(
   -Wall -Wextra -Werror -pedantic
