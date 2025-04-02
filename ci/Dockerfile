@@ -18,9 +18,18 @@ RUN apt-get update \
     rsync \
     shfmt \
     wget \
-    npm \
     clang-format \
- && rm -rf /var/lib/apt/lists/*
+    debhelper \
+    devscripts \
+    equivs \
+    fakeroot \
+    git \
+    git-buildpackage \
+    software-properties-common \
+    libmbedtls-dev \
+    libcmocka-dev \
+ && rm -rf /var/lib/apt/lists/* \
+ && ln -fs /usr/share/zoneinfo/UTC /etc/localtime
 
 # build and install musl for aarch64
 RUN mkdir -p /opt/src/musl \
