@@ -1,4 +1,23 @@
+
 # Compact Init
+
+## Table of Contents
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Local build using Docker container (including html documentation)](#local-build-using-docker-container-including-html-documentation)
+- [Functional Documentation](#functional-documentation)
+  - [General Description](#general-description)
+  - [Startup](#startup)
+  - [Rootfs Partition Metadata](#rootfs-partition-metadata)
+    - [Settings Fields](#settings-fields)
+    - [DM\_TABLE data](#dm%5C_table-data)
+    - [Signature](#signature)
+  - [HSM Emulation](#hsm-emulation)
+  - [Design decision regarding static linkage and musl](#design-decision-regarding-static-linkage-and-musl)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Local build using Docker container (including html documentation)
 

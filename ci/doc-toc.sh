@@ -1,12 +1,12 @@
 #!/bin/bash
 # SPDX-License-Identifier: MIT
 #
-# README table of contents generation and lint script for merge request
+# Table of contents generation and lint script for merge request
 # branches.
 #
-# Usage: ./ci/readme-toc.sh
+# Usage: ./ci/doc-toc.sh
 #
-# This will update the README Table of Contents automatically. If git detects
+# This will update the Table of Contents automatically. If git detects
 # changes afterwards, the script will return 1, otherwise 0.
 #
 # Set DOCTOC_CMD env variable if your doctoc binary/script is not in
@@ -19,11 +19,12 @@ DOCTOC_CMD=${DOCTOC_CMD:-doctoc}
 CMDPATH=$(cd "$(dirname "$0")" && pwd)
 BASEDIR=${CMDPATH%/*}
 
-# Update README ToC.
+# Update ToC.
 ${DOCTOC_CMD} --github "${BASEDIR}/README.md"
+${DOCTOC_CMD} --github "${BASEDIR}/doc/measured_boot/tpm-library.md"
 
 # Check if the Update changed anything and report via exit status (useful for
 # the pipeline check). This will be false positive if there are other unstaged
-# changes in the README but that does not matter for development and should
+# changes in the updated files but that does not matter for development and should
 # not happen in the pipeline.
 git diff --quiet

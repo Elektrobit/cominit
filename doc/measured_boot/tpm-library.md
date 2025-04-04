@@ -1,6 +1,30 @@
+
+
 # ADR TPM library for measured boot
 
-[[_TOC_]]
+## Table of Contents
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Problem](#problem)
+- [Influencing factors](#influencing-factors)
+  - [1 - primary factors](#1---primary-factors)
+  - [2 - secondary factors](#2---secondary-factors)
+  - [3 - tertiary factory](#3---tertiary-factory)
+- [Assumptions](#assumptions)
+- [Considered alternatives](#considered-alternatives)
+  - [1) tpm2-tss](#1-tpm2-tss)
+  - [2) wolfTPM](#2-wolftpm)
+  - [3) TSS.MSR](#3-tssmsr)
+  - [4) IBM TPM2 TSS](#4-ibm-tpm2-tss)
+  - [5) go-tpm](#5-go-tpm)
+- [6) TrouSerS](#6-trousers)
+- [Decision](#decision)
+  - [Review Team](#review-team)
+- [Open Point](#open-point)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Problem
 

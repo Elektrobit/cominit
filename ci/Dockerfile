@@ -14,6 +14,7 @@ RUN apt-get update \
     clang llvm clang-tidy \
     qemu-user-static \
     libc6:i386 \
+    npm \
     rsync \
  && rm -rf /var/lib/apt/lists/*
 
@@ -65,6 +66,9 @@ RUN mkdir -p /opt/src/cmocka \
  && make \
  && make install \
  && rm -rf /opt/src/cmocka
+
+ # Install doctoc
+RUN npm install doctoc -g
 
 RUN locale-gen en_US.UTF-8 \
  && groupadd -g $GID -o ci \
