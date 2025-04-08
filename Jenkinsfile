@@ -48,6 +48,7 @@ pipeline {
                         gitlabCommitStatus("$STAGE_NAME") {
                             sh '''#!/bin/bash -xe
                               ci/clang-tidy.sh
+                              ci/format-code.sh --check
                               ci/lint-commits.sh origin/integration
                             '''
                         }
