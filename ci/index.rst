@@ -76,3 +76,16 @@ If you want to bypass the hook for e.g. a work-in-progress commit, just use
 Note that the hook will not complain about 'fixup' commits, assuming that you
 plan to squash them later. However, the pipeline step will still prevent
 'fixup' commits from being merged.
+
+Code-Formatting
+===============
+
+The code formatter script ``ci/format-code.sh`` will use ``clang-format`` and
+``shfmt`` with the correct settings to format C code, header files and shell
+scripts within the project.
+
+Optionally, the ``--check`` parameter does a dry run, reporting errors if any
+files do not conform to formatting rules.
+
+The ``clang-format`` and ``shfmt`` tools should be available in most distros.
+Alternatively, they are available n the build container as well.
