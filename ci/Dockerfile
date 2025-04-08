@@ -16,6 +16,7 @@ RUN apt-get update \
     libc6:i386 \
     npm \
     rsync \
+    shfmt \
     npm \
     clang-format \
  && rm -rf /var/lib/apt/lists/*
