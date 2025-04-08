@@ -17,6 +17,7 @@ RUN apt-get update \
     npm \
     rsync \
     npm \
+    clang-format \
  && rm -rf /var/lib/apt/lists/*
 
 # build and install musl for aarch64
