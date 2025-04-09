@@ -39,7 +39,7 @@ CLANG_FORMAT_ACTION_ARGS="-i"
 
 # The directories we want to search in for both tools.
 C_CODE_DIRS="${BASEDIR}/inc ${BASEDIR}/src"
-SH_CODE_DIRS="${BASEDIR}/ci ${BASEDIR}/scripts ${BASEDIR}/test"
+SH_CODE_DIRS="${BASEDIR}/ci ${BASEDIR}/test"
 
 if [[ $# == 1 ]]; then
     if [ "$1" = "--check" ]; then
