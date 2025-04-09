@@ -14,9 +14,10 @@ docker build \
     --tag $PROJECT .
 
 if ! [ -e "$BASEDIR/ci/sshconfig" ]; then
-    { echo "Host *"
-      echo "  User $(id -u -n)"
-    } > $BASEDIR/ci/sshconfig
+    {
+        echo "Host *"
+        echo "  User $(id -u -n)"
+    } >$BASEDIR/ci/sshconfig
 fi
 
 if [ "$SSH_AUTH_SOCK" ]; then
@@ -28,4 +29,3 @@ echo "==> run $PROJECT build container"
 docker run --rm -it --privileged $SSH_AGENT_OPTS \
     -v $HOME/.ssh:/home/ci/.ssh -v $BASEDIR/ci/sshconfig:/home/ci/.ssh/config \
     -v $BASEDIR:/base -w /base $PROJECT $@
-

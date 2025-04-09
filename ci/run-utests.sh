@@ -10,11 +10,10 @@ BASEDIR=${CMDPATH%/*}
 UTEST_REPORT="$BASEDIR"/result/utest_report.txt
 
 # check if ci/build.sh has been run before
-if [ ! -f "/usr/local/aarch64-musl/bin/musl-gcc" ] || \
-    [ ! -f "/usr/local/aarch64-musl/lib/libmbedcrypto.a" ] || \
-    [ ! -f "/usr/local/aarch64-musl/lib/libcmocka.a" ] || \
-    [ ! -d "$BASEDIR/result" ]
-then
+if [ ! -f "/usr/local/aarch64-musl/bin/musl-gcc" ] \
+    || [ ! -f "/usr/local/aarch64-musl/lib/libmbedcrypto.a" ] \
+    || [ ! -f "/usr/local/aarch64-musl/lib/libcmocka.a" ] \
+    || [ ! -d "$BASEDIR/result" ]; then
     echo Build environment not set up. Please run ci/build.sh first!
     exit 1
 fi
