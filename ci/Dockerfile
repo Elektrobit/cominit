@@ -17,6 +17,7 @@ RUN apt-get update \
     npm \
     rsync \
     shfmt \
+    wget \
     npm \
     clang-format \
  && rm -rf /var/lib/apt/lists/*
