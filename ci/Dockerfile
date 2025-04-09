@@ -7,27 +7,38 @@ ARG GID=1000
 ENV DEBIAN_FRONTEND=noninteractive
 RUN dpkg --add-architecture i386
 RUN apt-get update \
- && apt-get install -y sudo locales vim screen libncurses-dev \
-    build-essential git python3-minimal cmake \
-    gcc-aarch64-linux-gnu \
-    doxygen graphviz plantuml \
-    clang llvm clang-tidy \
-    qemu-user-static \
-    libc6:i386 \
-    npm \
-    rsync \
-    shfmt \
-    wget \
-    clang-format \
-    debhelper \
-    devscripts \
-    equivs \
-    fakeroot \
-    git \
-    git-buildpackage \
-    software-properties-common \
-    libmbedtls-dev \
-    libcmocka-dev \
+ && apt-get install -y \
+ build-essential \
+ clang \
+ clang-format \
+ clang-tidy \
+ cmake \
+ debhelper \
+ devscripts \
+ doxygen \
+ equivs \
+ fakeroot \
+ gcc-aarch64-linux-gnu \
+ git \
+ git-buildpackage \
+ graphviz \
+ libc6:i386 \
+ libcmocka-dev \
+ libmbedtls-dev \
+ libncurses-dev \
+ llvm \
+ locales \
+ npm \
+ plantuml \
+ python3-minimal \
+ qemu-user-static \
+ rsync \
+ screen \
+ shfmt \
+ software-properties-common \
+ sudo \
+ vim \
+ wget \
  && rm -rf /var/lib/apt/lists/* \
  && ln -fs /usr/share/zoneinfo/UTC /etc/localtime
 
