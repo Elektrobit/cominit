@@ -8,6 +8,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN dpkg --add-architecture i386
 RUN apt-get update \
  && apt-get install -y \
+ autoconf \
+ autoconf-archive \
+ automake \
  build-essential \
  clang \
  clang-format \
@@ -26,9 +29,12 @@ RUN apt-get update \
  libcmocka-dev \
  libmbedtls-dev \
  libncurses-dev \
+ libssl-dev \
+ libtool \
  llvm \
  locales \
  npm \
+ pkg-config \
  plantuml \
  python3-minimal \
  qemu-user-static \
@@ -37,6 +43,7 @@ RUN apt-get update \
  shfmt \
  software-properties-common \
  sudo \
+ uthash-dev \
  vim \
  wget \
  && rm -rf /var/lib/apt/lists/* \
@@ -66,7 +73,7 @@ RUN mkdir -p /opt/src/mbedtls \
  && git checkout 8df2f8e7b9c7bb9390ac74bb7bace27edca81a2b \
  && CC="/usr/local/aarch64-musl/bin/musl-gcc" \
     CFLAGS='-O2 -Werror -mcpu=cortex-a53 -march=armv8-a+crc -ffunction-sections -fdata-sections \
-    -fstack-protector-strong -D_FORTIFY_SOURCE=2 \
+    -fstack-protector-strong \
     -DMBEDTLS_USER_CONFIG_FILE=\"/opt/src/mbedtls-user-config.h\"' \
     make -j$(nproc) no_test \
  && make install DESTDIR=/usr/local/aarch64-musl \
@@ -90,6 +97,27 @@ RUN mkdir -p /opt/src/cmocka \
  && make \
  && make install \
  && rm -rf /opt/src/cmocka
+
+# build and install tpm2-tss for aarch64
+RUN mkdir -p /opt/src/tpm2_tss \
+&& git clone https://github.com/tpm2-software/tpm2-tss.git /opt/src/tpm2_tss \
+&& cd /opt/src/tpm2_tss \
+&& git checkout 4.0.0 \
+&& ./bootstrap \
+&& CC="/usr/local/aarch64-musl/bin/musl-gcc" CROSS_COMPILE=/usr/local/aarch64-musl/bin/musl- \
+CFLAGS='-march=armv8-a+crc -mcpu=cortex-a53 -isystem /usr/local/aarch64-musl/include' LDFLAGS='-L/usr/local/aarch64-musl/lib/' \
+./configure \
+  --disable-fapi \
+  --disable-tcti-pcap \
+  --disable-doxygen-doc \
+  --host=aarch64-linux-musl \
+  --with-crypto=mbed \
+  --disable-policy \
+  --prefix=/usr/local/aarch64-musl/ \
+&& CFLAGS='-march=armv8-a+crc -mcpu=cortex-a53 -isystem /usr/local/aarch64-musl/include' LDFLAGS='-L/usr/local/aarch64-musl/lib/' \
+make -j$(nproc) \
+&& make install \
+&& rm -rf /opt/src/tpm2_tss
 
  # Install doctoc
 RUN npm install doctoc -g
