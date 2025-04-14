@@ -1,5 +1,6 @@
 build/
 lib/
+doc/html
 ci/sshconfig
 result/
 packaging/rpmbuild/SOURCES
