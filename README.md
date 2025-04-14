@@ -25,11 +25,19 @@ from the root directory run:
 ```
 ci/docker-run.sh
 ```
-and
-```
+The docker script will start a Docker container for the native host architecture with all necessary programs to build Cominit and its
+Doxygen documentation and to run the tests.
+It is possible to run the Docker container for a foreign architecture such as arm64 with the help of qemu-user-static
+and binfmt-support. Make sure these packages are installed on your host system if you want to use this functionality.
+All following commands to be run inside the container will be the same regardless of the architecture.
+```sh
+ci/docker-run.sh arm64
+
+Inside the container, it is sufficient to run
+```sh
 ci/build.sh
 ```
-The docker script will download, build, and install dependencies to the container image.
+
 All further steps (i.e. `clang-tidy` and unit testing) assume the build has been run with `ci/build.sh` and
 will fail otherwise.
 

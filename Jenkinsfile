@@ -24,8 +24,11 @@ pipeline {
                 dockerfile {
                     dir 'ci'
                     reuseNode true
-                    additionalBuildArgs "--build-arg USER=jenkins \
-                        --build-arg UID=${env.UID} --build-arg GID=${env.GID}"
+                    additionalBuildArgs " \
+                            --build-arg REPO=amd64 \
+                            --build-arg USER=jenkins \
+                            --build-arg UID=${env.UID} \
+                            --build-arg GID=${env.GID} \
                     args "--privileged \
                         -v /etc/ssh/ssh_known_hosts:/etc/ssh/ssh_known_hosts:ro \
                         --tmpfs ${TMPDIR}:rw,size=787448k,mode=1777"
