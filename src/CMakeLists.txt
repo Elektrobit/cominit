@@ -32,6 +32,27 @@ target_link_libraries(
     ${MBEDTLS_CRYPTO_LIBRARY}
 )
 
+if(USE_TPM)
+  find_package(Tss2-esys REQUIRED)
+  find_package(Tss2-tctildr REQUIRED)
+
+  target_sources(cominit PRIVATE tpm.c)
+
+  target_include_directories(
+    cominit
+    PRIVATE
+      ${TSS2_ESYS_INCLUDE_DIRS}
+      ${TSS2_TCTILDR_INCLUDE_DIRS}
+  )
+  target_link_libraries(
+    cominit
+    PRIVATE
+      ${TSS2_ESYS_LIBRARIES}
+      ${TSS2_TCTILDR_LIBRARIES}
+  )
+endif()
+
+
 # install
 
 install(TARGETS cominit DESTINATION ${CMAKE_INSTALL_BINDIR})

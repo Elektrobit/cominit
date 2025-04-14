@@ -170,6 +170,10 @@ bootup. This is meant for development purposes in case a real hardware-security 
 or not functional. The source file `keyring.h` shows how to define which keys to enroll. The names of the keys need to
 be defined at compile-time and the key files themselves need to be accessible to cominit in the initramfs.
 
+### TPM Usage
+If compiled with the optional `-DUSE_TPM=On` flag, cominit will add TPM functionality. This flag is currently intended
+for development use only, but it will later enable a measured‑boot feature.
+
 ### Design decision regarding static linkage and musl
 
 `cominit` is to be statically linked. A decision was made to use the musl libc over the standard glibc for two reasons:
