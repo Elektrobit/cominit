@@ -32,6 +32,13 @@ and binfmt-support. Make sure these packages are installed on your host system i
 All following commands to be run inside the container will be the same regardless of the architecture.
 ```sh
 ci/docker-run.sh arm64
+```
+
+By default, `ci/docker-run.sh` will use a container based on Ubuntu Jammy. If another version is desired, it can be
+specified as a second parameter. For example, you can run a Lunar-based container using
+```sh
+ci/docker-run.sh amd64 lunar
+```
 
 Inside the container, it is sufficient to run
 ```sh
