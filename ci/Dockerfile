@@ -10,9 +10,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN dpkg --add-architecture i386
 RUN apt-get update \
  && apt-get install -y \
- autoconf \
- autoconf-archive \
- automake \
  build-essential \
  clang \
  clang-format \
@@ -30,8 +27,6 @@ RUN apt-get update \
  libcmocka-dev \
  libmbedtls-dev \
  libncurses-dev \
- libssl-dev \
- libtool \
  libtss2-dev \
  llvm \
  locales \
@@ -39,13 +34,11 @@ RUN apt-get update \
  pkg-config \
  plantuml \
  python3-minimal \
- qemu-user-static \
  rsync \
  screen \
  shfmt \
  software-properties-common \
  sudo \
- uthash-dev \
  vim \
  wget \
  && rm -rf /var/lib/apt/lists/* \
