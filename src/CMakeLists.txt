@@ -33,8 +33,11 @@ target_link_libraries(
 )
 
 if(USE_TPM)
-  find_package(Tss2-esys REQUIRED)
-  find_package(Tss2-tctildr REQUIRED)
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(TSS2_ESYS REQUIRED tss2-esys)
+
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(TSS2_TCTILDR REQUIRED tss2-tctildr)
 
   target_sources(cominit PRIVATE tpm.c)
 
@@ -51,8 +54,6 @@ if(USE_TPM)
       ${TSS2_TCTILDR_LIBRARIES}
   )
 endif()
-
-target_link_options(cominit PRIVATE -static -Wl,--gc-sections)
 
 # install
 

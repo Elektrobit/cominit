@@ -15,7 +15,7 @@
     - [DM\_TABLE data](#dm%5C_table-data)
     - [Signature](#signature)
   - [HSM Emulation](#hsm-emulation)
-  - [Design decision regarding static linkage and musl](#design-decision-regarding-static-linkage-and-musl)
+  - [TPM Usage](#tpm-usage)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -188,11 +188,3 @@ be defined at compile-time and the key files themselves need to be accessible to
 ### TPM Usage
 If compiled with the optional `-DUSE_TPM=On` flag, cominit will add TPM functionality. This flag is currently intended
 for development use only, but it will later enable a measured‑boot feature.
-
-### Design decision regarding static linkage and musl
-
-`cominit` is to be statically linked. A decision was made to use the musl libc over the standard glibc for two reasons:
-
-1. Using musl results in considerably smaller binaries than glibc if linking statically.
-2. glibc is released under LGPL which does not permit static linking with closed-source code while
-   musl is released under the more permissive MIT license without these restrictions.
