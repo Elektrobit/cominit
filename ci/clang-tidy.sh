@@ -7,7 +7,9 @@
 #
 CMDPATH=$(cd $(dirname $0) && pwd)
 BASEDIR=${CMDPATH%/*}
-BUILDDIR=build
+# architecture name amd64, arm64, ...
+ARCH=$(dpkg --print-architecture)
+BUILDDIR=build/"$ARCH"
 
 if [ ! -f "${BUILDDIR}"/compile_commands.json ]; then
     echo "Build environment not set up. Please run ci/build.sh first!" >&2
@@ -18,7 +20,7 @@ rm -rf $BASEDIR/result/clang-tidy
 mkdir $BASEDIR/result/clang-tidy
 cd $BASEDIR
 
-CLANG_TIDY_FLAGS=(-p "${BUILDDIR}" --extra-arg-before='--target=aarch64-linux-gnu')
+CLANG_TIDY_FLAGS=(-p "${BUILDDIR}" --extra-arg-before='--target=amd64-linux-gnu')
 
 # run clang-tidy for cominit
 clang-tidy "${CLANG_TIDY_FLAGS[@]}" -dump-config -header-filter='inc\/*.h' inc/*.h src/*.c "$BUILDDIR"/src/version.c >result/clang-tidy/config

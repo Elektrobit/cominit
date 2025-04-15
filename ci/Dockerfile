@@ -33,6 +33,7 @@ RUN apt-get update \
  libncurses-dev \
  libssl-dev \
  libtool \
+ libtss2-dev \
  llvm \
  locales \
  npm \
