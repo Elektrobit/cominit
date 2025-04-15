@@ -52,6 +52,7 @@ if(USE_TPM)
   )
 endif()
 
+target_link_options(cominit PRIVATE -static -Wl,--gc-sections)
 
 # install
 
