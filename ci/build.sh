@@ -26,6 +26,7 @@ cmake -B "$BUILDDIR" \
     -DCMAKE_VERBOSE_MAKEFILE=On \
     -DUNIT_TESTS=On \
     -DFAKE_HSM=On \
+    -DUSE_TPM=On \
     "$BASEDIR"
 make -C "$BUILDDIR"
 
