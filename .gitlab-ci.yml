@@ -49,7 +49,7 @@ Lint:
   script:
     - ci/clang-tidy.sh
     - ci/format-code.sh --check
-    - ci/lint-commits.sh origin/integration
+    - ci/lint-commits.sh origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-$CI_DEFAULT_BRANCH}
   artifacts:
     paths:
       - result/
