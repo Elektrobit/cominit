@@ -48,8 +48,8 @@ RUN apt-get update \
 RUN npm install doctoc -g
 
 RUN locale-gen en_US.UTF-8 \
- && groupadd -g $GID -o ci \
- && useradd -m -u $UID -g $GID -o -s /bin/bash $USER \
+ && groupadd -g $GID ci \
+ && useradd -m -u $UID -g $GID -s /bin/bash $USER \
  && echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
  # Install commitlint too with conventional commit config and dependencies.
