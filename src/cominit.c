@@ -18,6 +18,9 @@
 #ifdef COMINIT_FAKE_HSM
 #include "keyring.h"
 #endif
+#ifdef COMINIT_USE_TPM
+#include "tpm.h"
+#endif
 #include "minsetup.h"
 #include "output.h"
 #include "version.h"
@@ -75,6 +78,13 @@ static void cominitPrintVersion(void);
  * Includes version message via cominitPrintVersion().
  */
 static void cominitPrintUsage(void);
+/**
+ * Checks at RT the parsed options to determine if a TPM should be used.
+ *
+ * @param ctx   Pointer to the structure that receives the parsed options.
+ * @return  0 on success, 1 otherwise
+ */
+static inline int cominitUseTpm(cominitCliArgs_t *ctx);
 
 /**
  * Compact Init main function.
@@ -88,6 +98,10 @@ static void cominitPrintUsage(void);
  *         return an error code.
  */
 int main(int argc, char *argv[], char *envp[]) {
+#ifdef COMINIT_USE_TPM
+    cominitCliArgs_t argCtx = {0};
+#endif
+
     for (int i = 0; i < argc; i++) {
         if (cominitParamCheck(argv[i], "-V", "--version")) {
             cominitPrintVersion();
@@ -97,6 +111,14 @@ int main(int argc, char *argv[], char *envp[]) {
             cominitPrintUsage();
             return EXIT_FAILURE;
         }
+#ifdef COMINIT_USE_TPM
+        if (cominitParamCheck(argv[i], "pcrExtend", "cominit.pcrExtend")) {
+            if (cominitTpmParsePcrIndex(&argCtx, argc, argv, i) == EXIT_FAILURE) {
+                cominitErrPrint("\'%s\' requires an integer PCR index ", argv[i]);
+                continue;
+            }
+        }
+#endif
     }
     setsid();
     umask(0);
@@ -159,6 +181,29 @@ int main(int argc, char *argv[], char *envp[]) {
         cominitErrPrint("Support for dm-crypt not yet available.");
         goto rescue;
     }
+
+#ifdef COMINIT_USE_TPM
+    if (cominitUseTpm(&argCtx) == EXIT_SUCCESS) {
+        cominitTpmContext_t tpmCtx;
+
+        cominitInfoPrint("TPM is used");
+
+        int result = cominitInitTpm(&tpmCtx);
+
+        if (result != EXIT_SUCCESS) {
+            cominitErrPrint("TPM init failed.");
+        } else {
+            if (argCtx.pcrSet == true) {
+                result = cominitTpmExtendPCR(&tpmCtx, COMINIT_ROOTFS_KEY_LOCATION, argCtx.pcrIndex);
+                if (result != EXIT_SUCCESS) {
+                    cominitErrPrint("PCR extention failed.");
+                }
+            }
+        }
+
+        cominitDeleteTpm(&tpmCtx);
+    }
+#endif
 
     /* Set up the rootfs */
     cominitInfoPrint("Setting up rootfs at /newroot...");
@@ -235,3 +280,18 @@ static void cominitPrintUsage(void) {
         "/dev/<blkdevice><partno>)\n"
         "       is determined through an argument passed to cominit by the bootloader on the kernel command line.\n");
 }
+
+static inline int cominitUseTpm(cominitCliArgs_t *ctx) {
+    int result = EXIT_FAILURE;
+
+    if (ctx == NULL) {
+        cominitErrPrint("Invalid parameters");
+    } else {
+        if (ctx->pcrSet == true) {
+            result = EXIT_SUCCESS;
+        }
+    }
+
+    return result;
+}
+

@@ -33,6 +33,8 @@ target_link_libraries(
 )
 
 if(USE_TPM)
+  target_compile_definitions(cominit PRIVATE COMINIT_USE_TPM)
+
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(TSS2_ESYS REQUIRED tss2-esys)
 
