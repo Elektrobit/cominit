@@ -6,18 +6,11 @@
 #ifndef __TPM_H__
 #define __TPM_H__
 
-#include <stdbool.h>
 #include <stdint.h>
 #include <tss2/tss2_esys.h>
 #include <tss2/tss2_tctildr.h>
 
-/**
- * Structure holding parsed options from argv.
- */
-typedef struct cominitCliArgs {
-    bool pcrSet;             ///< Flag to check whether pcrIndex is set to a valid value.
-    unsigned long pcrIndex;  ///< The index of the SHA-256 bank of the TPM.
-} cominitCliArgs_t;
+#include "common.h"
 
 /**
  * Structure holding Tpm Context that is acquired during RT.
