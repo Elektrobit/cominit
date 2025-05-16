@@ -130,22 +130,20 @@ int cominitDeleteTpm(cominitTpmContext_t *tpmCtx) {
     return result;
 }
 
-int cominitTpmParsePcrIndex(cominitCliArgs_t *ctx, int argc, char **argv, int i) {
+int cominitTpmParsePcrIndex(cominitCliArgs_t *ctx, const char *argValue) {
     int result = EXIT_FAILURE;
-    ctx->pcrSet = false;
 
-    if (ctx == NULL || argv == NULL) {
+    if (ctx == NULL || argValue == NULL) {
         cominitErrPrint("Invalid parameters");
     } else {
-        if (i + 1 < argc) {
-            errno = 0;
-            char *end;
-            unsigned long pcrIndex = strtoul(argv[i + 1], &end, 0);
-            if (!errno && *end == '\0' && pcrIndex < TPM2_PT_PCR_COUNT) {
-                result = EXIT_SUCCESS;
-                ctx->pcrSet = true;
-                ctx->pcrIndex = pcrIndex;
-            }
+        ctx->pcrSet = false;
+        errno = 0;
+        char *end;
+        unsigned long pcrIndex = strtoul(argValue, &end, 0);
+        if (!errno && *end == '\0' && pcrIndex < TPM2_PT_PCR_COUNT) {
+            result = EXIT_SUCCESS;
+            ctx->pcrSet = true;
+            ctx->pcrIndex = pcrIndex;
         }
     }
 

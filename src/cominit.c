@@ -86,17 +86,23 @@ static void cominitPrintUsage(void);
  * @return  0 on success, 1 otherwise
  */
 static inline int cominitUseTpm(cominitCliArgs_t *ctx);
-
 /**
- * Parses a device node from argv.
+ * Parses a device node from a value in an argument of argv.
  *
- * @param ctx   Pointer to the structure that receives the parsed options.
- * @param argc  Number of elements in @p argv.
- * @param argv  The provided argument vector.
- * @param i     Index in @p argv to check for a valid device node.
+ * @param device    Pointer to the structure that the device node is copied to.
+ * @param argValue  The parsed value of the argument found in the provided argument vector.
  * @return  0 on success, 1 otherwise
  */
-static int cominitParseDeviceNode(cominitCliArgs_t *ctx, int argc, char **argv, int i);
+static int cominitParseDeviceNode(char *device, const char *argValue);
+/**
+ * Parses a value from an argument of argv.
+ *
+ * @param arg    An element of the argument vector.
+ * @param param1 The first paramater that should be found in the argument.
+ * @param param2 The second paramater that should be found in the argument.
+ * @return  Pointer to the value of the argument if one parameter is found, NULL otherwise
+ */
+static const char *cominitParseArgValue(const char *arg, const char *param1, const char *param2);
 
 /**
  * Compact Init main function.
@@ -111,6 +117,7 @@ static int cominitParseDeviceNode(cominitCliArgs_t *ctx, int argc, char **argv, 
  */
 int main(int argc, char *argv[], char *envp[]) {
     cominitCliArgs_t argCtx = {0};
+    const char *argValue = NULL;
 
     for (int i = 0; i < argc; i++) {
         if (cominitParamCheck(argv[i], "-V", "--version")) {
@@ -121,15 +128,15 @@ int main(int argc, char *argv[], char *envp[]) {
             cominitPrintUsage();
             return EXIT_FAILURE;
         }
-        if (cominitParamCheck(argv[i], "root", "cominit.rootfs")) {
-            if (cominitParseDeviceNode(&argCtx, argc, argv, i) == EXIT_FAILURE) {
+        if ((argValue = cominitParseArgValue(argv[i], "root", "cominit.rootfs")) != NULL) {
+            if (cominitParseDeviceNode(argCtx.devNodeRootFs, argValue) == EXIT_FAILURE) {
                 cominitErrPrint("\'%s\' requires a valid device node ", argv[i]);
                 continue;
             }
         }
 #ifdef COMINIT_USE_TPM
-        if (cominitParamCheck(argv[i], "pcrExtend", "cominit.pcrExtend")) {
-            if (cominitTpmParsePcrIndex(&argCtx, argc, argv, i) == EXIT_FAILURE) {
+        if ((argValue = cominitParseArgValue(argv[i], "pcrExtend", "cominit.pcrExtend")) != NULL) {
+            if (cominitTpmParsePcrIndex(&argCtx, argValue) == EXIT_FAILURE) {
                 cominitErrPrint("\'%s\' requires an integer PCR index ", argv[i]);
                 continue;
             }
@@ -290,19 +297,17 @@ static void cominitPrintUsage(void) {
         "       is determined through an argument passed to cominit by the bootloader on the kernel command line.\n");
 }
 
-static int cominitParseDeviceNode(cominitCliArgs_t *ctx, int argc, char **argv, int i) {
+static int cominitParseDeviceNode(char *device, const char *argValue) {
     int result = EXIT_FAILURE;
 
-    if (ctx == NULL || argv == NULL) {
+    if (device == NULL || argValue == NULL) {
         cominitErrPrint("Invalid parameters");
     } else {
-        if (i + 1 < argc) {
-            if (strncmp(argv[i + 1], "/dev/", 5) == 0) {
-                size_t devNodeLen = strnlen(argv[i + 1], COMINIT_ROOTFS_DEV_PATH_MAX);
-                if (devNodeLen < COMINIT_ROOTFS_DEV_PATH_MAX) {
-                    memcpy(ctx->devNodeRootFs, argv[i + 1], devNodeLen + 1);
-                    result = EXIT_SUCCESS;
-                }
+        if (strncmp(argValue, "/dev/", 5) == 0) {
+            size_t devNodeLen = strnlen(argValue, COMINIT_ROOTFS_DEV_PATH_MAX);
+            if (devNodeLen < COMINIT_ROOTFS_DEV_PATH_MAX) {
+                memcpy(device, argValue, devNodeLen + 1);
+                result = EXIT_SUCCESS;
             }
         }
     }
@@ -324,3 +329,18 @@ static inline int cominitUseTpm(cominitCliArgs_t *ctx) {
     return result;
 }
 
+static const char *cominitParseArgValue(const char *arg, const char *key1, const char *key2) {
+    const char *value = NULL;
+
+    size_t klen = strlen(key1);
+    if (strncmp(arg, key1, klen) == 0 && arg[klen] == '=') {
+        value = arg + klen + 1;
+    } else {
+        klen = strlen(key2);
+        if (strncmp(arg, key2, klen) == 0 && arg[klen] == '=') {
+            value = arg + klen + 1;
+        }
+    }
+
+    return value;
+}

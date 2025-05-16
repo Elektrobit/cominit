@@ -81,8 +81,9 @@ to the init process via Kernel command line as well, like so:
 rdinit=/path/to/cominit [OTHER_KERNEL_PARAMETERS] -- [COMINIT_ARGV1] [COMINIT_ARGV2] [...]
 ```
 
-`cominit` currently either looks at its last argument (`argv[argc - 1]`) for the location of
-the rootfs to mount and switch into. All other settings are read from the partition's metadata.
+`cominit` currently looks for an argument `root` or `cominit.rootfs` in its argument vector for the location of
+the rootfs. `cominit` will mount and switch into the value of this argument (e.g. `root=/dev/sdxy`).  
+All other settings concerning the rootfs are read from the partition's metadata.
 
 If the rootfs is not immediately available or accessible, cominit will wait a pre-set interval and try again for a
 pre-set number of times. These values are currently set via preprocessor defines but need to made configurable in a
@@ -186,5 +187,6 @@ or not functional. The source file `keyring.h` shows how to define which keys to
 be defined at compile-time and the key files themselves need to be accessible to cominit in the initramfs.
 
 ### TPM Usage
-If compiled with the optional `-DUSE_TPM=On` flag, cominit will add TPM functionality. This flag is currently intended
-for development use only, but it will later enable a measured‑boot feature.
+If compiled with the optional `-DUSE_TPM=On` flag, cominit will add TPM functionality. If the flag is set cominit will 
+look for an argument `pcrExtend` or `cominit.pcrExtend` in its argument vector. If assigned to a valid 
+index (i.e. by pcrExtendIndex=10), cominit will extend this PCR (SHA-256 bank) with the hashed public key found in`/etc/rootfs_key_pub.pem`.

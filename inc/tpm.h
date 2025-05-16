@@ -26,12 +26,10 @@ typedef struct cominitTpmContext {
  * Called by cominit if its uses TPM.
  *
  * @param ctx   Pointer to the structure that receives the parsed options.
- * @param argc  Number of elements in @p argv.
- * @param argv  The provided argument vector.
- * @param i     Index in @p argv to check for a valid PCR.
+ * @param argValue  The parsed value of the argument found in the provided argument vector.
  * @return  0 on success, 1 otherwise
  */
-int cominitTpmParsePcrIndex(cominitCliArgs_t *ctx, int argc, char **argv, int i);
+int cominitTpmParsePcrIndex(cominitCliArgs_t *ctx, const char *argValue);
 
 /**
  * Releases shared run‑time resources that the TPM module
