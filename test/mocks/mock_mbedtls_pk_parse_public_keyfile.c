@@ -9,10 +9,10 @@
 
 #include "unit_test.h"
 
-    // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
+// NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
 int __wrap_mbedtls_pk_parse_public_keyfile(mbedtls_pk_context *ctx, const char *path) {
-    check_expected_ptr(ctx);
-    check_expected_ptr(path);
+    assert_non_null(ctx);
+    assert_non_null(path);
 
     return 0;
 }

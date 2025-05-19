@@ -11,5 +11,5 @@
 
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
 void __wrap_mbedtls_pk_init(mbedtls_pk_context *ctx) {
-    check_expected_ptr(ctx);
+    assert_non_null(ctx);
 }

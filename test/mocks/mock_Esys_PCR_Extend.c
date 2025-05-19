@@ -9,19 +9,16 @@
 
 #include "unit_test.h"
 
-        // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-TSS2_RC __wrap_Esys_PCR_Extend(ESYS_CONTEXT *esysContext,
-                               ESYS_TR pcrHandle,
-                               ESYS_TR shandle1,
-                               ESYS_TR shandle2,
-                               ESYS_TR shandle3,
-                               const TPML_DIGEST_VALUES *digests) {
+// NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
+TSS2_RC __wrap_Esys_PCR_Extend(ESYS_CONTEXT *esysContext, ESYS_TR pcrHandle, ESYS_TR shandle1, ESYS_TR shandle2,
+                               ESYS_TR shandle3, const TPML_DIGEST_VALUES *digests) {
     check_expected_ptr(esysContext);
     check_expected(pcrHandle);
     check_expected(shandle1);
     check_expected(shandle2);
     check_expected(shandle3);
-    check_expected_ptr(digests);
 
-    return TSS2_RC_SUCCESS;
+    assert_non_null(digests);
+
+    return mock_type(TSS2_RC);
 }
