@@ -2,10 +2,6 @@ ARG REPO
 ARG UBUNTU_RELEASE
 FROM ${REPO}${REPO:+/}ubuntu:${UBUNTU_RELEASE}
 
-ARG USER=ci
-ARG UID=1000
-ARG GID=1000
-
 ENV DEBIAN_FRONTEND=noninteractive
 RUN dpkg --add-architecture i386
 RUN apt-get update \
@@ -47,20 +43,23 @@ RUN apt-get update \
  # Install doctoc
 RUN npm install doctoc -g
 
-RUN locale-gen en_US.UTF-8 \
- && groupadd -g $GID ci \
- && useradd -m -u $UID -g $GID -s /bin/bash $USER \
- && echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-
  # Install commitlint too with conventional commit config and dependencies.
 RUN npm install n -g \
 && n stable
 RUN npm install @commitlint/cli -g \
 && npm install @commitlint/config-conventional -g
 
+ARG USER=ci
+ARG UID=1000
+ARG GID=1000
+
+RUN locale-gen en_US.UTF-8 \
+ && groupadd -g $GID ci \
+ && useradd -m -u $UID -g $GID -s /bin/bash $USER \
+ && echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
 USER $USER
 ENV LC_ALL=en_US.UTF-8
 ENV DOCKERBUILD=1
 
 CMD /bin/bash
-
