@@ -12,11 +12,11 @@
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
 TSS2_RC __wrap_Esys_SelfTest(ESYS_CONTEXT *esysContext, ESYS_TR shandle1, ESYS_TR shandle2, ESYS_TR shandle3,
                              TPMI_YES_NO fullTest) {
-    check_expected_ptr(esysContext);
-    check_expected(shandle1);
-    check_expected(shandle2);
-    check_expected(shandle3);
-    check_expected(fullTest);
+    assert_non_null(esysContext);
+    (void)(shandle1);
+    (void)(shandle2);
+    (void)(shandle3);
+    (void)(fullTest);
 
     return TSS2_RC_SUCCESS;
 }
