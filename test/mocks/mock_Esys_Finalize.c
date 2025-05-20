@@ -9,7 +9,7 @@
 
 #include "unit_test.h"
 
-        // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
+// NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
 void __wrap_Esys_Finalize(ESYS_CONTEXT **context) {
-    check_expected_ptr(context);
+    assert_non_null(context);
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /**
  * @file utest-init-tpm.c
- * @brief Impementation of an cominitTpmParsePcrIndex() unit test group using cmocka.
+ * @brief Impementation of an cominitInitTpm() unit test group using cmocka.
  */
 #include "utest-init-tpm.h"
 
