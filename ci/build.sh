@@ -6,26 +6,33 @@
 CMDPATH=$(cd $(dirname $0) && pwd)
 BASEDIR=${CMDPATH%/*}
 
+# architecture name amd64, arm64, ...
+ARCH=$(dpkg --print-architecture)
+
+BUILDDIR="$BASEDIR/build/$ARCH"
+RESULTDIR="$BASEDIR/result/$ARCH"
+
 # prepare result dir
-rm -rf $BASEDIR/result
-mkdir -p $BASEDIR/result/bin/aarch64
+rm -rf "$RESULTDIR"
+mkdir -p "$RESULTDIR"/bin
 
 # build
-cd $BASEDIR
+cd "$BASEDIR"
 
 # build aarch64 cominit, statically linked with musl
-mkdir -p $BASEDIR/build
-cmake -B $BASEDIR/build \
-    -DCMAKE_TOOLCHAIN_FILE=$BASEDIR/ci/aarch64-toolchain.cmake \
+mkdir -p "$BUILDDIR"
+cmake -B "$BUILDDIR" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_VERBOSE_MAKEFILE=On \
     -DUNIT_TESTS=On \
     -DFAKE_HSM=On \
-    -DCMAKE_EXE_LINKER_FLAGS="-static -Wl,--gc-sections" \
-    $BASEDIR
-make -C $BASEDIR/build
-cp $BASEDIR/build/src/cominit $BASEDIR/result/bin/aarch64
+    -DUSE_TPM=On \
+    "$BASEDIR"
+make -C "$BUILDDIR"
+
+# copy binaries
+cp "$BUILDDIR"/src/cominit "$RESULTDIR"/bin/
 
 # build and copy documentation
-make -C $BASEDIR/build doxygen
-cp -a $BASEDIR/doc $BASEDIR/result
+make -C "$BUILDDIR" doxygen
+cp -a $BASEDIR/doc "$RESULTDIR"/

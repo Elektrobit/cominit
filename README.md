@@ -1,4 +1,23 @@
+
 # Compact Init
+
+## Table of Contents
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [Local build using Docker container (including html documentation)](#local-build-using-docker-container-including-html-documentation)
+- [Functional Documentation](#functional-documentation)
+  - [General Description](#general-description)
+  - [Startup](#startup)
+  - [Rootfs Partition Metadata](#rootfs-partition-metadata)
+    - [Settings Fields](#settings-fields)
+    - [DM\_TABLE data](#dm%5C_table-data)
+    - [Signature](#signature)
+  - [HSM Emulation](#hsm-emulation)
+  - [TPM Usage](#tpm-usage)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Local build using Docker container (including html documentation)
 
@@ -6,11 +25,26 @@ from the root directory run:
 ```
 ci/docker-run.sh
 ```
-and
+The docker script will start a Docker container for the native host architecture with all necessary programs to build Cominit and its
+Doxygen documentation and to run the tests.
+It is possible to run the Docker container for a foreign architecture such as arm64 with the help of qemu-user-static
+and binfmt-support. Make sure these packages are installed on your host system if you want to use this functionality.
+All following commands to be run inside the container will be the same regardless of the architecture.
+```sh
+ci/docker-run.sh arm64
 ```
+
+By default, `ci/docker-run.sh` will use a container based on Ubuntu Jammy. If another version is desired, it can be
+specified as a second parameter. For example, you can run a Lunar-based container using
+```sh
+ci/docker-run.sh amd64 lunar
+```
+
+Inside the container, it is sufficient to run
+```sh
 ci/build.sh
 ```
-The docker script will download, build, and install dependencies to the container image.
+
 All further steps (i.e. `clang-tidy` and unit testing) assume the build has been run with `ci/build.sh` and
 will fail otherwise.
 
@@ -47,8 +81,9 @@ to the init process via Kernel command line as well, like so:
 rdinit=/path/to/cominit [OTHER_KERNEL_PARAMETERS] -- [COMINIT_ARGV1] [COMINIT_ARGV2] [...]
 ```
 
-`cominit` currently either looks at its last argument (`argv[argc - 1]`) for the location of
-the rootfs to mount and switch into. All other settings are read from the partition's metadata.
+`cominit` currently looks for an argument `root` or `cominit.rootfs` in its argument vector for the location of
+the rootfs. `cominit` will mount and switch into the value of this argument (e.g. `root=/dev/sdxy`).  
+All other settings concerning the rootfs are read from the partition's metadata.
 
 If the rootfs is not immediately available or accessible, cominit will wait a pre-set interval and try again for a
 pre-set number of times. These values are currently set via preprocessor defines but need to made configurable in a
@@ -151,10 +186,7 @@ bootup. This is meant for development purposes in case a real hardware-security 
 or not functional. The source file `keyring.h` shows how to define which keys to enroll. The names of the keys need to
 be defined at compile-time and the key files themselves need to be accessible to cominit in the initramfs.
 
-### Design decision regarding static linkage and musl
-
-`cominit` is to be statically linked. A decision was made to use the musl libc over the standard glibc for two reasons:
-
-1. Using musl results in considerably smaller binaries than glibc if linking statically.
-2. glibc is released under LGPL which does not permit static linking with closed-source code while
-   musl is released under the more permissive MIT license without these restrictions.
+### TPM Usage
+If compiled with the optional `-DUSE_TPM=On` flag, cominit will add TPM functionality. If the flag is set cominit will 
+look for an argument `pcrExtend` or `cominit.pcrExtend` in its argument vector. If assigned to a valid 
+index (i.e. by pcrExtendIndex=10), cominit will extend this PCR (SHA-256 bank) with the hashed public key found in`/etc/rootfs_key_pub.pem`.

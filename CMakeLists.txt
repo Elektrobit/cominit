@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE AND DEFINED ENV{CMAKE_TOOLCHAIN_FILE})
   set(CMAKE_TOOLCHAIN_FILE $ENV{CMAKE_TOOLCHAIN_FILE})
 endif()
-project(cominit VERSION 0.5.8)
+project(cominit VERSION 0.8.2)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_EXTENSIONS NO)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -12,6 +12,7 @@ include(GNUInstallDirs)
 
 option(UNIT_TESTS "Build unit tests" ON)
 option(FAKE_HSM "Emulate a HSM for development" OFF)
+option(USE_TPM "Add TPM functionality for development" OFF)
 set(FAKE_HSM_KEY_DESCS
     "dm-integrity-hmac-secret dm-integrity-jmac-secret dm-integrity-jcrypt-secret"
     CACHE STRING

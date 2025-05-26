@@ -111,9 +111,12 @@ static int cominitNftwRemove(const char *fpath, const struct stat *sb, int tflag
             }
             break;
         case FTW_DP:
-            if (strcmp(fpath, "/") != 0 && rmdir(fpath) == -1) {
-                cominitErrnoPrint("Could not remove directory \'%s\'.", fpath);
+            if (ftwbuf->level > 0) {
+                if (rmdir(fpath) == -1) {
+                    cominitErrnoPrint("Could not remove directory \'%s\'.", fpath);
+                }
             }
+
             break;
         case FTW_D:
             break;

@@ -18,6 +18,10 @@
 #ifdef COMINIT_FAKE_HSM
 #include "keyring.h"
 #endif
+#ifdef COMINIT_USE_TPM
+#include "tpm.h"
+#endif
+#include "common.h"
 #include "minsetup.h"
 #include "output.h"
 #include "version.h"
@@ -75,6 +79,30 @@ static void cominitPrintVersion(void);
  * Includes version message via cominitPrintVersion().
  */
 static void cominitPrintUsage(void);
+/**
+ * Checks at RT the parsed options to determine if a TPM should be used.
+ *
+ * @param ctx   Pointer to the structure that receives the parsed options.
+ * @return  0 on success, 1 otherwise
+ */
+static inline int cominitUseTpm(cominitCliArgs_t *ctx);
+/**
+ * Parses a device node from a value in an argument of argv.
+ *
+ * @param device    Pointer to the structure that the device node is copied to.
+ * @param argValue  The parsed value of the argument found in the provided argument vector.
+ * @return  0 on success, 1 otherwise
+ */
+static int cominitParseDeviceNode(char *device, const char *argValue);
+/**
+ * Parses a value from an argument of argv.
+ *
+ * @param arg    An element of the argument vector.
+ * @param param1 The first paramater that should be found in the argument.
+ * @param param2 The second paramater that should be found in the argument.
+ * @return  Pointer to the value of the argument if one parameter is found, NULL otherwise
+ */
+static const char *cominitParseArgValue(const char *arg, const char *param1, const char *param2);
 
 /**
  * Compact Init main function.
@@ -88,6 +116,9 @@ static void cominitPrintUsage(void);
  *         return an error code.
  */
 int main(int argc, char *argv[], char *envp[]) {
+    cominitCliArgs_t argCtx = {0};
+    const char *argValue = NULL;
+
     for (int i = 0; i < argc; i++) {
         if (cominitParamCheck(argv[i], "-V", "--version")) {
             cominitPrintVersion();
@@ -97,6 +128,20 @@ int main(int argc, char *argv[], char *envp[]) {
             cominitPrintUsage();
             return EXIT_FAILURE;
         }
+        if ((argValue = cominitParseArgValue(argv[i], "root", "cominit.rootfs")) != NULL) {
+            if (cominitParseDeviceNode(argCtx.devNodeRootFs, argValue) == EXIT_FAILURE) {
+                cominitErrPrint("\'%s\' requires a valid device node ", argv[i]);
+                continue;
+            }
+        }
+#ifdef COMINIT_USE_TPM
+        if ((argValue = cominitParseArgValue(argv[i], "pcrExtend", "cominit.pcrExtend")) != NULL) {
+            if (cominitTpmParsePcrIndex(&argCtx, argValue) == EXIT_FAILURE) {
+                cominitErrPrint("\'%s\' requires an integer PCR index ", argv[i]);
+                continue;
+            }
+        }
+#endif
     }
     setsid();
     umask(0);
@@ -121,30 +166,23 @@ int main(int argc, char *argv[], char *envp[]) {
 
     cominitRfsMetaData_t rfsMeta;
 
-    /* Check if we got an absolute path to an existing device node as the last argument on the Kernel command line */
-    char *lastArg = argv[argc - 1];
-    if (lastArg != NULL && strncmp(lastArg, "/dev", 4) == 0) {
+    if (argCtx.devNodeRootFs[0] != '\0') {
         struct stat statbuf;
         unsigned long failCount = 0;
-        while (stat(lastArg, &statbuf) == -1) {
+        memcpy(rfsMeta.devicePath, argCtx.devNodeRootFs, sizeof(rfsMeta.devicePath));
+        while (stat(argCtx.devNodeRootFs, &statbuf) == -1) {
             if ((errno == ENOENT || errno == EACCES) && failCount < COMINIT_ROOT_WAIT_TRIES) {
-                cominitInfoPrint("Rootfs at '%s' not yet available or accessible, trying again in %lums.", lastArg,
-                                 COMINIT_ROOT_WAIT_INTERVAL_MILLIS);
+                cominitInfoPrint("Rootfs at '%s' not yet available or accessible, trying again in %lums.",
+                                 rfsMeta.devicePath, COMINIT_ROOT_WAIT_INTERVAL_MILLIS);
                 failCount++;
                 cominitMicroSleep((unsigned long long)COMINIT_ROOT_WAIT_INTERVAL_MILLIS * 1000uLL);
             } else {
-                cominitErrnoPrint("Could not stat given rootfs location (\'%s\').", lastArg);
+                cominitErrnoPrint("Could not stat given rootfs location (\'%s\').", rfsMeta.devicePath);
                 goto rescue;
             }
         }
     } else {
-        cominitErrPrint("No rootfs partition provided by the bootloader.");
-        goto rescue;
-    }
-
-    char *endPtr = stpncpy(rfsMeta.devicePath, lastArg, sizeof(rfsMeta.devicePath) - 1);
-    if (*endPtr != '\0') {
-        cominitErrPrint("Given rootfs location from command line (\'%s\') is too long.", lastArg);
+        cominitErrPrint("No valid rootfs partition provided by the bootloader.");
         goto rescue;
     }
 
@@ -159,6 +197,29 @@ int main(int argc, char *argv[], char *envp[]) {
         cominitErrPrint("Support for dm-crypt not yet available.");
         goto rescue;
     }
+
+#ifdef COMINIT_USE_TPM
+    if (cominitUseTpm(&argCtx) == EXIT_SUCCESS) {
+        cominitTpmContext_t tpmCtx;
+
+        cominitInfoPrint("TPM is used");
+
+        int result = cominitInitTpm(&tpmCtx);
+
+        if (result != EXIT_SUCCESS) {
+            cominitErrPrint("TPM init failed.");
+        } else {
+            if (argCtx.pcrSet == true) {
+                result = cominitTpmExtendPCR(&tpmCtx, COMINIT_ROOTFS_KEY_LOCATION, argCtx.pcrIndex);
+                if (result != EXIT_SUCCESS) {
+                    cominitErrPrint("PCR extention failed.");
+                }
+            }
+        }
+
+        cominitDeleteTpm(&tpmCtx);
+    }
+#endif
 
     /* Set up the rootfs */
     cominitInfoPrint("Setting up rootfs at /newroot...");
@@ -234,4 +295,52 @@ static void cominitPrintUsage(void) {
         "       metadata and then switch into it. The location of the rootfs partition (e.g. "
         "/dev/<blkdevice><partno>)\n"
         "       is determined through an argument passed to cominit by the bootloader on the kernel command line.\n");
+}
+
+static int cominitParseDeviceNode(char *device, const char *argValue) {
+    int result = EXIT_FAILURE;
+
+    if (device == NULL || argValue == NULL) {
+        cominitErrPrint("Invalid parameters");
+    } else {
+        if (strncmp(argValue, "/dev/", 5) == 0) {
+            size_t devNodeLen = strnlen(argValue, COMINIT_ROOTFS_DEV_PATH_MAX);
+            if (devNodeLen < COMINIT_ROOTFS_DEV_PATH_MAX) {
+                memcpy(device, argValue, devNodeLen + 1);
+                result = EXIT_SUCCESS;
+            }
+        }
+    }
+
+    return result;
+}
+
+static inline int cominitUseTpm(cominitCliArgs_t *ctx) {
+    int result = EXIT_FAILURE;
+
+    if (ctx == NULL) {
+        cominitErrPrint("Invalid parameters");
+    } else {
+        if (ctx->pcrSet == true) {
+            result = EXIT_SUCCESS;
+        }
+    }
+
+    return result;
+}
+
+static const char *cominitParseArgValue(const char *arg, const char *key1, const char *key2) {
+    const char *value = NULL;
+
+    size_t klen = strlen(key1);
+    if (strncmp(arg, key1, klen) == 0 && arg[klen] == '=') {
+        value = arg + klen + 1;
+    } else {
+        klen = strlen(key2);
+        if (strncmp(arg, key2, klen) == 0 && arg[klen] == '=') {
+            value = arg + klen + 1;
+        }
+    }
+
+    return value;
 }

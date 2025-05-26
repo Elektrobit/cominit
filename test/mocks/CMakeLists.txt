@@ -20,4 +20,21 @@ function(create_mock_lib)
   )
 endfunction()
 
-create_mock_lib(NAME libmockfunctions SOURCES mock_umount2.c mock_mount.c mock_mkdir.c INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
+create_mock_lib(NAME libmockfunctions
+    SOURCES
+    mock_Esys_Finalize.c
+    mock_Esys_Initialize.c
+    mock_Esys_PCR_Extend.c
+    mock_Esys_SelfTest.c
+    mock_Tss2_TctiLdr_Finalize.c
+    mock_Tss2_TctiLdr_Initialize.c
+    mock_mbedtls_pk_free.c
+    mock_mbedtls_pk_init.c
+    mock_mbedtls_pk_parse_public_keyfile.c
+    mock_mbedtls_pk_write_pubkey_der.c
+    mock_mbedtls_sha256_ret.c
+    mock_mount.c
+    mock_umount2.c
+    mock_mkdir.c
+    INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}
+)

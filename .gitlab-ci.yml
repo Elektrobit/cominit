@@ -1,0 +1,63 @@
+variables:
+  # Runner will discover the UID and GID of the user configured in the image used by the build container
+  # and will change the ownership of the working directory and files by running the chmod command in the
+  # predefined container (after updating sources, restoring cache and downloading artifacts).
+  FF_DISABLE_UMASK_FOR_DOCKER_EXECUTOR: "true"
+
+default:
+  tags:
+    - docker
+  image: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+
+build-docker-image:
+  stage: .pre
+  services:
+    - name: $CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX/docker:dind
+      variables:
+        DOCKER_TLS_CERTDIR: ""
+      # hostname of dind container inside the private network has to be "docker"
+      alias: docker
+  image: $CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX/docker:latest
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - echo "$CI_DEPENDENCY_PROXY_PASSWORD" | docker login $CI_DEPENDENCY_PROXY_SERVER -u $CI_DEPENDENCY_PROXY_USER --password-stdin
+
+    - docker build
+      --pull
+      --push
+      --cache-from $CI_REGISTRY_IMAGE:buildcache
+      --build-arg BUILDKIT_INLINE_CACHE=1
+      --build-arg CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX=$CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX/
+      --build-arg REPO=amd64
+      --build-arg UBUNTU_RELEASE=jammy
+      --tag $CI_REGISTRY_IMAGE:buildcache
+      --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+      -f ci/Dockerfile .
+
+Build:
+  stage: build
+  script:
+    - env
+    - ci/build.sh
+  artifacts:
+    paths:
+      - build/
+      - result/
+
+Lint:
+  stage: test
+  script:
+    - ci/clang-tidy.sh
+    - ci/format-code.sh --check
+    - ci/lint-commits.sh origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-$CI_DEFAULT_BRANCH}
+  artifacts:
+    paths:
+      - result/
+
+Unit Tests:
+  stage: test
+  script:
+    - ci/run-utests.sh
+  artifacts:
+    paths:
+      - result/

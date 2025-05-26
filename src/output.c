@@ -84,4 +84,3 @@ int cominitErrnoPrintFFL(const char *file, const char *func, int line, const cha
     cCount += ret;
     return cCount;
 }
-

@@ -14,10 +14,10 @@
 #include <unistd.h>
 
 #include "keyring.h"
-#include "mbedtls/version.h"
 #include "mbedtls/error.h"
 #include "mbedtls/pk.h"
 #include "mbedtls/sha256.h"
+#include "mbedtls/version.h"
 #include "output.h"
 
 #define COMINIT_ROOTFS_FEATURE_NONE "none"  ///< Human-readable string indicating no use of device mapper features.
