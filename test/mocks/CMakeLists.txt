@@ -33,6 +33,7 @@ create_mock_lib(NAME libmockfunctions
     mock_mbedtls_pk_parse_public_keyfile.c
     mock_mbedtls_pk_write_pubkey_der.c
     mock_mbedtls_sha256_ret.c
+    mock_mbedtls_sha256.c
     mock_mount.c
     mock_umount2.c
     mock_mkdir.c

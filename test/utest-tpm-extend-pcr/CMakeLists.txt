@@ -32,4 +32,5 @@ create_unit_test(
     -Wl,--wrap=mbedtls_pk_parse_public_keyfile
     -Wl,--wrap=mbedtls_pk_write_pubkey_der
     -Wl,--wrap=mbedtls_sha256_ret
+    -Wl,--wrap=mbedtls_sha256
 )
