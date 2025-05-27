@@ -1,12 +1,14 @@
 #include "tpm.h"
 
 #include <errno.h>
-#include <mbedtls/pk.h>
-#include <mbedtls/sha256.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "mbedtls/error.h"
+#include "mbedtls/pk.h"
+#include "mbedtls/sha256.h"
+#include "mbedtls/version.h"
 #include "meta.h"
 #include "output.h"
 
@@ -88,7 +90,11 @@ int cominitTpmExtendPCR(cominitTpmContext_t *tpmCtx, const char *keyfile, unsign
             int derLen = mbedtls_pk_write_pubkey_der(&pkCtx, der, sizeof(der));
             if (derLen > 0) {
                 const unsigned char *pubKeyDer = der + sizeof(der) - derLen;
+#if MBEDTLS_VERSION_MAJOR == 2
                 err = mbedtls_sha256_ret(pubKeyDer, (size_t)derLen, digest, 0);
+#else
+                err = mbedtls_sha256(pubKeyDer, (size_t)derLen, digest, 0);
+#endif
                 if (err == 0) {
                     ESYS_TR pcrTR = ESYS_TR_PCR0 + pcrIndex;
                     TPML_DIGEST_VALUES vals = {.count = 1};
