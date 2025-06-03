@@ -231,6 +231,7 @@ int main(int argc, char *argv[], char *envp[]) {
                 cominitTpmState_t state = cominitTpmProtectData(&tpmCtx, &argCtx);
                 switch (state) {
                     case TpmPolicyFailure:
+                        cominitTpmHandlePolicyFailure();
                         break;
                     case Unsealed:
                         break;

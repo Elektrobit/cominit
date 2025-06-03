@@ -32,6 +32,13 @@ typedef enum {
     Unsealed,          ///< Data was successfully unsealed by the TPM.
     Sealed,            ///< Data was successfully sealed by the TPM.
 } cominitTpmState_t;
+/**
+ * Handles failure on a TPM policy check.
+ *
+ * Dummy implementation.
+ *
+ */
+void cominitTpmHandlePolicyFailure();
 
 /**
  * Perform TPM-based sealing (on first boot) and unsealing (on every boot) of data.

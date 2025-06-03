@@ -19,9 +19,8 @@
 
 #define DER_BUFFER_SIZE 1600  ///< buffer size to hold RSA‑4k key.
 #define SHA256_LEN 32         ///< size of SHA256 digest.
-#ifndef TPM2_PERSISTENT_FIRST  ///< Address to store primary handle in TPM.
-#define TPM2_PERSISTENT_FIRST ((TPMI_DH_PERSISTENT)0x81000000)
-#endif
+
+#define POLICY_FAILURE_RC 0x0000099d  ///< return code on policy failure.
 
 /**
  * Result codes on checking the current state of the blob partition.
@@ -442,6 +441,149 @@ static void cominitTpmUnmountBlob() {
     umount(COMINIT_TPM_MNT_PT);
 }
 
+/**
+ * Loads the primary key for unsealing.
+ *
+ * @param ectx  The Pointer to the initialized ESYS_CONTEXT handle.
+ * @param primaryHandle Pointer to a ESYS_TR structure that receives the primary key handle.
+ * @return  0 on success, 1 otherwise
+ */
+static int cominitTpmLoadPrimaryHandle(ESYS_CONTEXT *ectx, ESYS_TR *primaryHandle) {
+    int result = EXIT_FAILURE;
+
+    TSS2_RC rc =
+        Esys_TR_FromTPMPublic(ectx, TPM2_PERSISTENT_FIRST, ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, primaryHandle);
+
+    if (rc != TSS2_RC_SUCCESS) {
+        cominitErrPrint("Could not open primary handle");
+    } else {
+        result = EXIT_SUCCESS;
+    }
+
+    return result;
+}
+
+/**
+ * Loads the sealed blob from a given path on the blob partition.
+ *
+ * @param outPublic The Pointer to the structure that receives the public meta data.
+ * @param outPrivate    The Pointer to the structure that receives the private data.
+ * @return  0 on success, 1 otherwise
+ */
+static int cominitTpmLoadBlob(TPM2B_PUBLIC *outPublic, TPM2B_PRIVATE *outPrivate) {
+    int result = EXIT_FAILURE;
+    FILE *fp = NULL;
+
+    fp = fopen(COMINIT_TPM_MNT_PT "/" COMINIT_TPM_BLOB_LOCATION, "rb");
+    if (fp) {
+        size_t want = sizeof *outPublic;
+        if (fread(outPublic, 1, want, fp) == want) {
+            want = sizeof *outPrivate;
+            if (fread(outPrivate, 1, want, fp) == want) {
+                result = EXIT_SUCCESS;
+            }
+        }
+    }
+
+    if (fp) {
+        fclose(fp);
+    }
+
+    return result;
+}
+
+/**
+ * Unseals the key.
+ *
+ * @param ectx  The Pointer to the initialized ESYS_CONTEXT handle.
+ * @param primaryHandle Pointer to an ESYS_TR holding a transient primary key handle.
+ * @param outPublic The Pointer to the structure that holds the public meta data.
+ * @param outPrivate    The Pointer to the structure that holds the private data.
+ * @param argCtx Pointer to the structure that holds the parsed options.
+ * @param key Pointer to a TPM2B_DIGEST structure receiving a key.
+ * @return  Unsealed=2 on success, TpmPolicyFailure=1 or TpmFailure=0 otherwise
+ */
+static cominitTpmState_t cominitTpmUnseal(ESYS_CONTEXT *ectx, ESYS_TR *primaryHandle, TPM2B_PUBLIC *outPublic,
+                                          TPM2B_PRIVATE *outPrivate, cominitCliArgs_t *argCtx, TPM2B_DIGEST *key) {
+    ESYS_TR blobHandle = ESYS_TR_NONE;
+    ESYS_TR sess = ESYS_TR_NONE;
+    cominitTpmState_t state = TpmFailure;
+    TPM2B_SENSITIVE_DATA *outData = NULL;
+
+    TSS2_RC rc = Esys_Load(ectx, *primaryHandle, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE, outPrivate, outPublic,
+                           &blobHandle);
+
+    if (rc != TSS2_RC_SUCCESS) {
+        cominitErrPrint("Load of handle failed");
+    } else {
+        TPMT_SYM_DEF symmetric = {.algorithm = TPM2_ALG_NULL};
+        rc = Esys_StartAuthSession(ectx, ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, NULL,
+                                   TPM2_SE_POLICY, &symmetric, TPM2_ALG_SHA256, &sess);
+        if (rc != TSS2_RC_SUCCESS) {
+            cominitErrPrint("Starting session failed");
+        } else {
+            TPML_PCR_SELECTION psel = {
+                .count = 1, .pcrSelections = {{.hash = TPM2_ALG_SHA256, .sizeofSelect = 3, .pcrSelect = {0, 0, 0}}}};
+            cominitTpmSelectPcr(argCtx, &psel);
+
+            rc = Esys_PolicyPCR(ectx, sess, ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, NULL, &psel);
+
+            if (rc != TSS2_RC_SUCCESS) {
+                cominitErrPrint("Creating policy failed");
+            } else {
+                rc = Esys_Unseal(ectx, blobHandle, sess, ESYS_TR_NONE, ESYS_TR_NONE, &outData);
+                if (rc != TSS2_RC_SUCCESS) {
+                    if (rc == POLICY_FAILURE_RC) {
+                        state = TpmPolicyFailure;
+                    } else {
+                        cominitErrPrint("Unsealing failed");
+                    }
+                } else {
+                    memcpy(key, outData->buffer, outData->size);
+                    key->size = outData->size;
+                    state = Unsealed;
+                }
+            }
+        }
+    }
+
+    Esys_FlushContext(ectx, sess);
+    Esys_FlushContext(ectx, blobHandle);
+    free(outData);
+    return state;
+}
+
+/**
+ * Loads the primary key and the private data to unseal the key.
+ *
+ * @param ectx  The Pointer to the initialized ESYS_CONTEXT handle.
+ * @param argCtx Pointer to the structure that holds the parsed options.
+ * @param key Pointer to a TPM2B_DIGEST structure receiving a key.
+ * @return  Unsealed=2 on success, TpmPolicyFailure=1 or TpmFailure=0 otherwise
+ */
+static cominitTpmState_t cominitTpmUnsealBlob(ESYS_CONTEXT *ectx, cominitCliArgs_t *argCtx, TPM2B_DIGEST *key) {
+    TPM2B_PUBLIC outPublic = {0};
+    TPM2B_PRIVATE outPrivate = {0};
+    ESYS_TR primaryHandle = ESYS_TR_NONE;
+    int result = EXIT_FAILURE;
+    cominitTpmState_t tpmState = TpmFailure;
+
+    result = cominitTpmLoadPrimaryHandle(ectx, &primaryHandle);
+
+    if (result != EXIT_SUCCESS) {
+        cominitErrPrint("Could not retrieve handle.");
+    } else {
+        result = cominitTpmLoadBlob(&outPublic, &outPrivate);
+        if (result != EXIT_SUCCESS) {
+            cominitErrPrint("Could not retrieve blob.");
+        } else {
+            tpmState = cominitTpmUnseal(ectx, &primaryHandle, &outPublic, &outPrivate, argCtx, key);
+        }
+    }
+
+    return tpmState;
+}
+
 int cominitInitTpm(cominitTpmContext_t *tpmCtx) {
     const char *tctiConf = "device:/dev/tpm0";
     int result = EXIT_FAILURE;
@@ -586,11 +728,15 @@ int cominitTpmParsePcrIndexes(cominitCliArgs_t *argCtx, const char *argValue) {
 
     return result;
 }
+void cominitTpmHandlePolicyFailure() {
+    cominitErrPrint("Policy check failed");
+}
 
 cominitTpmState_t cominitTpmProtectData(cominitTpmContext_t *tpmCtx, cominitCliArgs_t *argCtx) {
     cominitBlobState_t blobState = BlobNotFound;
     cominitTpmState_t tpmState = TpmFailure;
     TPM2B_DIGEST *keyToSeal = NULL;
+    TPM2B_DIGEST *unsealedKey = calloc(1, sizeof(TPM2B_DIGEST));
 
     blobState = cominitTpmSetupBlob(argCtx);
 
@@ -604,11 +750,13 @@ cominitTpmState_t cominitTpmProtectData(cominitTpmContext_t *tpmCtx, cominitCliA
                 tpmState = cominitTpmSealBlob(tpmCtx->esysCtx, argCtx, keyToSeal);
                 if (tpmState == Sealed) {
                     cominitTpmDeleteKey(&keyToSeal);
+                    tpmState = cominitTpmUnsealBlob(tpmCtx->esysCtx, argCtx, unsealedKey);
                 }
             }
             break;
         case BlobExists:
             cominitInfoPrint("Blob exists: unsealing");
+            tpmState = cominitTpmUnsealBlob(tpmCtx->esysCtx, argCtx, unsealedKey);
             break;
         case BlobNotFound:
         default:
@@ -618,6 +766,7 @@ cominitTpmState_t cominitTpmProtectData(cominitTpmContext_t *tpmCtx, cominitCliA
     }
 
     cominitTpmDeleteKey(&keyToSeal);
+    cominitTpmDeleteKey(&unsealedKey);
 
     cominitTpmUnmountBlob(argCtx->devNodeBlob);
 
