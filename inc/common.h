@@ -7,15 +7,20 @@
 #define __COMMON_H__
 
 #include <stdbool.h>
+#include <tss2/tss2_esys.h>
 
 #include "meta.h"
 /**
  * Structure holding parsed options from argv.
  */
 typedef struct cominitCliArgs {
-    bool pcrSet;                                      ///< Flag to check whether pcrIndex is set to a valid value.
-    unsigned long pcrIndex;                           ///< The index of the SHA-256 bank of the TPM.
+    bool pcrSet;                               ///< Flag to check whether pcrIndex is set to a valid value.
+    unsigned long pcrIndex;                    ///< The index of the SHA-256 bank of the TPM.
+    int pcrSealCount;                          ///< The number of registers in the SHA-256 bank used for sealing.
+    unsigned long pcrSeal[TPM2_PT_PCR_COUNT];  ///< The list of registers in the SHA-256 bank used for sealing.
+
     char devNodeRootFs[COMINIT_ROOTFS_DEV_PATH_MAX];  ///< Holds the Rootfs device node.
+    char devNodeBlob[COMINIT_ROOTFS_DEV_PATH_MAX];    ///< Holds the blob device node.
 } cominitCliArgs_t;
 
 /**
@@ -29,5 +34,14 @@ typedef struct cominitCliArgs {
     do {                          \
         (void)(par);              \
     } while (0)
+
+/**
+ * Helper macro to count the number of elements in an array.
+ *
+ * @param array  The array that elements should be counted.
+ */
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
+#endif
 
 #endif /* __COMMON_H__ */

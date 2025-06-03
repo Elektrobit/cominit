@@ -141,6 +141,18 @@ int main(int argc, char *argv[], char *envp[]) {
                 continue;
             }
         }
+        if ((argValue = cominitParseArgValue(argv[i], "blob", "cominit.blob")) != NULL) {
+            if (cominitParseDeviceNode(argCtx.devNodeBlob, argValue) == EXIT_FAILURE) {
+                cominitErrPrint("\'%s\' requires a valid device node ", argv[i]);
+                continue;
+            }
+        }
+        if ((argValue = cominitParseArgValue(argv[i], "pcrSeal", "cominit.pcrSeal")) != NULL) {
+            if (cominitTpmParsePcrIndexes(&argCtx, argValue) == EXIT_FAILURE) {
+                cominitErrPrint("\'%s\' requires integer PCR indexes ", argv[i]);
+                continue;
+            }
+        }
 #endif
     }
     setsid();
@@ -215,8 +227,21 @@ int main(int argc, char *argv[], char *envp[]) {
                     cominitErrPrint("PCR extention failed.");
                 }
             }
+            if (argCtx.devNodeBlob[0] != '\0' && argCtx.pcrSealCount > 0) {
+                cominitTpmState_t state = cominitTpmProtectData(&tpmCtx, &argCtx);
+                switch (state) {
+                    case TpmPolicyFailure:
+                        break;
+                    case Unsealed:
+                        break;
+                    case Sealed:
+                    case TpmFailure:
+                    default:
+                        cominitErrPrint("TPM failed to set up protected data.");
+                        break;
+                }
+            }
         }
-
         cominitDeleteTpm(&tpmCtx);
     }
 #endif
@@ -322,6 +347,8 @@ static inline int cominitUseTpm(cominitCliArgs_t *ctx) {
         cominitErrPrint("Invalid parameters");
     } else {
         if (ctx->pcrSet == true) {
+            result = EXIT_SUCCESS;
+        } else if (ctx->devNodeBlob[0] != '\0' && ctx->pcrSealCount > 0) {
             result = EXIT_SUCCESS;
         }
     }
