@@ -7,6 +7,7 @@
 #define __META_H__
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 /** The location of the public key to verify the rootfs partition metadata. **/
@@ -73,5 +74,30 @@ typedef struct cominitRfsMetaData_t {
  * @return  0 on success, -1 otherwise
  */
 int cominitLoadVerifyMetadata(cominitRfsMetaData_t *meta, const char *keyfile);
+/**
+ * Get the size of a partition.
+ *
+ * Uses the BLKGETSIZE64 ioctl() to return the size in Bytes. The given file descriptor must be opened and associated
+ * with a partition block device.
+ *
+ * @param partSize  Return pointer for the size in Bytes.
+ * @param fd         The partition file descriptor.
+ *
+ * @return  0 on success, -1 otherwise
+ */
+int cominitGetPartSize(uint64_t *partSize, int fd);
+/**
+ * Convert a series of Bytes to a hexadecimal string representation.
+ *
+ * Will read \a n Bytes from src and write \f$ 2n+1 \f$ (including the null-Byte) characters to dest. Hexadecimal digits
+ * `[a-f]` wil be written in lower-case.
+ *
+ * @param dest  The output string, needs to have space for at least \f$ 2n+1 \f$ characters.
+ * @param src   The array of bytes to convert.
+ * @param n     The amount of Bytes in src t convert.
+ *
+ * @return  0 on success, -1 otherwise
+ */
+int cominitBytesToHex(char *dest, const uint8_t *src, size_t n);
 
 #endif /* __META_H__ */

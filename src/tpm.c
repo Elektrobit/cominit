@@ -2,14 +2,17 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
+#include "dmctl.h"
 #include "mbedtls/error.h"
 #include "mbedtls/pk.h"
 #include "mbedtls/sha256.h"
@@ -398,6 +401,64 @@ static int cominitTpmSeal(ESYS_CONTEXT *ectx, TPM2B_PUBLIC **outPublic, TPM2B_PR
 
     return result;
 }
+
+/**
+ * Formats the secure storage partition to ext4 on first boot.
+ *
+ * */
+static int cominitTpmFormatSecureStorage() {
+    int result = EXIT_FAILURE;
+    pid_t pid = fork();
+    if (pid == 0) {
+        char *argv[] = {"/sbin/mkfs.ext4", "-F", (char *)COMINIT_TPM_SECURE_STORAGE_LOCATION, NULL};
+        char *envp[] = {NULL};
+        execve("/sbin/mkfs.ext4", argv, envp);
+        _exit(1);
+    } else if (pid > 0) {
+        int status;
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+            result = EXIT_SUCCESS;
+        } else {
+            cominitErrPrint("mkfs.ext4 failed or was terminated.");
+        }
+    } else {
+        cominitErrPrint("fork failed");
+    }
+
+    return result;
+}
+
+/**
+ * Sets up the secure storage with the unsealed key.
+ *
+ * @param argCtx Pointer to the structure that holds the parsed options.
+ * @param key Pointer to an TPM2B_DIGEST structure holding a key.
+ * @param isFirstBoot Flag to indicate whether it is the very first boot.
+ * @return  0 on success, 1 otherwise
+ */
+static int cominitTpmSetupSecureStorage(cominitCliArgs_t *argCtx, TPM2B_DIGEST *key, bool isFirstBoot) {
+    int result = EXIT_FAILURE;
+
+    if (cominitSetupDmDeviceCrypt(argCtx->devNodeCrypt, COMINIT_TPM_SECURE_STORAGE_NAME, key, 0) != 0) {
+        cominitErrPrint("setting up dm-crypt device failed");
+    } else {
+        result = EXIT_SUCCESS;
+        if (isFirstBoot == true) {
+            if (access("/sbin/mkfs.ext4", X_OK) != 0) {
+                cominitErrPrint("mkfs.ext4 not found or not executable");
+            } else {
+                result = cominitTpmFormatSecureStorage();
+                if (result != EXIT_SUCCESS) {
+                    cominitErrPrint("formating secure storage failed");
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
 /**
  * Seals the key into blob and saves it.
  *
@@ -728,8 +789,62 @@ int cominitTpmParsePcrIndexes(cominitCliArgs_t *argCtx, const char *argValue) {
 
     return result;
 }
-void cominitTpmHandlePolicyFailure() {
+
+int cominitTpmMountSecureStorage() {
+    int result = cominitMkdir(COMINIT_TPM_SECURE_STORAGE_MNT, S_IRWXU);
+    if (result != EXIT_SUCCESS) {
+        cominitErrPrint("creating mount point for secure storage failed");
+    } else {
+        if (mount(COMINIT_TPM_SECURE_STORAGE_LOCATION, COMINIT_TPM_SECURE_STORAGE_MNT, "ext4", 0, "") != 0) {
+            result = -EXIT_FAILURE;
+        } else {
+            result = EXIT_SUCCESS;
+        }
+    }
+
+    return result;
+}
+
+int cominitTpmHandlePolicyFailure(cominitTpmContext_t *tpmCtx) {
+    int result = EXIT_FAILURE;
+
     cominitErrPrint("Policy check failed");
+
+    if (tpmCtx == NULL) {
+        cominitErrPrint("Invalid parameters");
+    } else {
+        result = EXIT_SUCCESS;
+    }
+
+    return result;
+}
+
+bool cominitTpmSecureStorageEnabled(cominitCliArgs_t *argCtx) {
+    bool secureStorageEnabled = false;
+
+    if (argCtx == NULL) {
+        cominitErrPrint("Invalid parameters");
+    } else {
+        if (argCtx->devNodeBlob[0] != '\0' && argCtx->pcrSealCount > 0 && argCtx->devNodeCrypt[0] != '\0') {
+            secureStorageEnabled = true;
+        }
+    }
+
+    return secureStorageEnabled;
+}
+
+bool cominitTpmExtendEnabled(cominitCliArgs_t *argCtx) {
+    bool extendEnabled = false;
+
+    if (argCtx == NULL) {
+        cominitErrPrint("Invalid parameters");
+    } else {
+        if (argCtx->pcrSet == true) {
+            extendEnabled = true;
+        }
+    }
+
+    return extendEnabled;
 }
 
 cominitTpmState_t cominitTpmProtectData(cominitTpmContext_t *tpmCtx, cominitCliArgs_t *argCtx) {
@@ -752,11 +867,23 @@ cominitTpmState_t cominitTpmProtectData(cominitTpmContext_t *tpmCtx, cominitCliA
                     cominitTpmDeleteKey(&keyToSeal);
                     tpmState = cominitTpmUnsealBlob(tpmCtx->esysCtx, argCtx, unsealedKey);
                 }
+                if (tpmState == Unsealed) {
+                    if (cominitTpmSetupSecureStorage(argCtx, unsealedKey, true) != EXIT_SUCCESS) {
+                        cominitErrPrint("Secure storage could not be set up.");
+                        tpmState = TpmFailure;
+                    }
+                }
             }
             break;
         case BlobExists:
             cominitInfoPrint("Blob exists: unsealing");
             tpmState = cominitTpmUnsealBlob(tpmCtx->esysCtx, argCtx, unsealedKey);
+            if (tpmState == Unsealed) {
+                if (cominitTpmSetupSecureStorage(argCtx, unsealedKey, false) != EXIT_SUCCESS) {
+                    cominitErrPrint("Secure storage could not be set up.");
+                    tpmState = TpmFailure;
+                }
+            }
             break;
         case BlobNotFound:
         default:

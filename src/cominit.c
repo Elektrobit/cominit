@@ -83,9 +83,9 @@ static void cominitPrintUsage(void);
  * Checks at RT the parsed options to determine if a TPM should be used.
  *
  * @param ctx   Pointer to the structure that receives the parsed options.
- * @return  0 on success, 1 otherwise
+ * @return  true if used, false otherwise
  */
-static inline int cominitUseTpm(cominitCliArgs_t *ctx);
+static inline bool cominitUseTpm(cominitCliArgs_t *ctx);
 /**
  * Parses a device node from a value in an argument of argv.
  *
@@ -153,6 +153,12 @@ int main(int argc, char *argv[], char *envp[]) {
                 continue;
             }
         }
+        if ((argValue = cominitParseArgValue(argv[i], "crypt", "cominit.crypt")) != NULL) {
+            if (cominitParseDeviceNode(argCtx.devNodeCrypt, argValue) == EXIT_FAILURE) {
+                cominitErrPrint("\'%s\' requires a valid device node ", argv[i]);
+                continue;
+            }
+        }
 #endif
     }
     setsid();
@@ -211,7 +217,7 @@ int main(int argc, char *argv[], char *envp[]) {
     }
 
 #ifdef COMINIT_USE_TPM
-    if (cominitUseTpm(&argCtx) == EXIT_SUCCESS) {
+    if (cominitUseTpm(&argCtx) == true) {
         cominitTpmContext_t tpmCtx;
 
         cominitInfoPrint("TPM is used");
@@ -221,17 +227,20 @@ int main(int argc, char *argv[], char *envp[]) {
         if (result != EXIT_SUCCESS) {
             cominitErrPrint("TPM init failed.");
         } else {
-            if (argCtx.pcrSet == true) {
+            if (cominitTpmExtendEnabled(&argCtx) == true) {
                 result = cominitTpmExtendPCR(&tpmCtx, COMINIT_ROOTFS_KEY_LOCATION, argCtx.pcrIndex);
                 if (result != EXIT_SUCCESS) {
                     cominitErrPrint("PCR extention failed.");
                 }
             }
-            if (argCtx.devNodeBlob[0] != '\0' && argCtx.pcrSealCount > 0) {
+            if (cominitTpmSecureStorageEnabled(&argCtx) == true) {
                 cominitTpmState_t state = cominitTpmProtectData(&tpmCtx, &argCtx);
                 switch (state) {
                     case TpmPolicyFailure:
-                        cominitTpmHandlePolicyFailure();
+                        result = cominitTpmHandlePolicyFailure(&tpmCtx);
+                        if (result != EXIT_SUCCESS) {
+                            cominitErrPrint("Failed to handle policy failure");
+                        }
                         break;
                     case Unsealed:
                         break;
@@ -253,6 +262,14 @@ int main(int argc, char *argv[], char *envp[]) {
         cominitErrPrint("Could not setup rootfs. Init failed.");
         goto rescue;
     }
+
+#ifdef COMINIT_USE_TPM
+    if (cominitTpmSecureStorageEnabled(&argCtx) == true) {
+        if (cominitTpmMountSecureStorage() == -1) {
+            cominitErrPrint("Mounting of secure storage failed");
+        }
+    }
+#endif
 
     /* Housekeeping/cleanup before switching to rootfs. For now, just initiate a lazy umount of /dev. */
     cominitInfoPrint("Unmounting system directories...");
@@ -341,20 +358,16 @@ static int cominitParseDeviceNode(char *device, const char *argValue) {
     return result;
 }
 
-static inline int cominitUseTpm(cominitCliArgs_t *ctx) {
-    int result = EXIT_FAILURE;
+static inline bool cominitUseTpm(cominitCliArgs_t *argCtx) {
+    bool useTpm = false;
 
-    if (ctx == NULL) {
-        cominitErrPrint("Invalid parameters");
-    } else {
-        if (ctx->pcrSet == true) {
-            result = EXIT_SUCCESS;
-        } else if (ctx->devNodeBlob[0] != '\0' && ctx->pcrSealCount > 0) {
-            result = EXIT_SUCCESS;
-        }
+    if (cominitTpmExtendEnabled(argCtx) == true) {
+        useTpm = true;
+    } else if (cominitTpmSecureStorageEnabled(argCtx) == true) {
+        useTpm = true;
     }
 
-    return result;
+    return useTpm;
 }
 
 static const char *cominitParseArgValue(const char *arg, const char *key1, const char *key2) {

@@ -6,6 +6,7 @@
 #ifndef __TPM_H__
 #define __TPM_H__
 
+#include <linux/dm-ioctl.h>
 #include <stdint.h>
 #include <tss2/tss2_esys.h>
 #include <tss2/tss2_tctildr.h>
@@ -14,6 +15,10 @@
 
 #define COMINIT_TPM_MNT_PT "/tpm"
 #define COMINIT_TPM_BLOB_LOCATION "sealed.blob"
+
+#define COMINIT_TPM_SECURE_STORAGE_NAME "secureStorage"
+#define COMINIT_TPM_SECURE_STORAGE_MNT "/newroot/mnt"
+#define COMINIT_TPM_SECURE_STORAGE_LOCATION "/dev/" DM_DIR "/" COMINIT_TPM_SECURE_STORAGE_NAME
 
 /**
  * Structure holding Tpm Context that is acquired during RT.
@@ -27,18 +32,29 @@ typedef struct cominitTpmContext {
  * Result codes for a TPM seal/unseal operation.
  */
 typedef enum {
-    TpmFailure,        ///< A general failure occurred during the TPM operation.
+    TpmFailure = 0,    ///< A general failure occurred during the TPM operation.
     TpmPolicyFailure,  ///< Failed because the TPM policy did not authorize the operation (platform state not trusted).
     Unsealed,          ///< Data was successfully unsealed by the TPM.
     Sealed,            ///< Data was successfully sealed by the TPM.
 } cominitTpmState_t;
+
+/**
+ * Mounts the dm crypt device to the new root.
+ * Mount point is defined in #COMINIT_TPM_SECURE_STORAGE_MNT.
+ *
+ * @return  0 on success, 1 otherwise
+ */
+int cominitTpmMountSecureStorage();
+
 /**
  * Handles failure on a TPM policy check.
  *
  * Dummy implementation.
  *
+ * @param tpmCtx   Pointer to the structure that holds the acquired TPM context.
+ * @return  0 on success, 1 otherwise
  */
-void cominitTpmHandlePolicyFailure();
+int cominitTpmHandlePolicyFailure(cominitTpmContext_t *tpmCtx);
 
 /**
  * Perform TPM-based sealing (on first boot) and unsealing (on every boot) of data.
@@ -104,5 +120,24 @@ int cominitTpmExtendPCR(cominitTpmContext_t *tpmCtx, const char *keyfile, unsign
  * @return  0 on success, 1 otherwise
  */
 int cominitInitTpm(cominitTpmContext_t *tpmCtx);
+
+/**
+ * Checks if option Extension of PCR is enabled.
+ *
+ * @param argCtx   Pointer to the structure that holds the parsed options.
+ *
+ * @return  true if enabled, disabled otherwise
+ */
+
+bool cominitTpmExtendEnabled(cominitCliArgs_t *argCtx);
+
+/**
+ * Checks if option Secure Storage is enabled.
+ *
+ * @param argCtx   Pointer to the structure that holds the parsed options.
+ *
+ * @return  true if enabled, disabled otherwise
+ */
+bool cominitTpmSecureStorageEnabled(cominitCliArgs_t *argCtx);
 
 #endif /* __TPM_H__ */

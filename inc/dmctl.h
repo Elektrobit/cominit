@@ -6,7 +6,10 @@
 #ifndef __DMCTL_H__
 #define __DMCTL_H__
 
+#include <stddef.h>
+
 #include "meta.h"
+#include "tpm.h"
 
 /**
  * The name of the new device mapper node. Path to dm volume will be `/dev/<DM_DIR>/<COMINIT_ROOTFS_DM_NAME>`. `DM_DIR`
@@ -30,5 +33,18 @@
  * @return  0 on success, -1 otherwise
  */
 int cominitSetupDmDevice(cominitRfsMetaData_t *rfsMeta);
+
+/**
+ * Set up a dm-crypt mapping for a given block device using a raw key.
+ *
+ * @param device  The path to the raw block device to encrypt.
+ * @param name  The name of the created device mapper node.
+ * @param key  The key to encrypt the device.
+ * @param offsetSectors  The number of 512-byte sectors to skip at the start of the device. That sectors are not mapped
+ * and therefor not encrypted.
+ *
+ * @return  0 on success, -1 otherwise
+ */
+int cominitSetupDmDeviceCrypt(char *device, const char *name, const TPM2B_DIGEST *key, uint64_t offsetSectors);
 
 #endif /* __DMCTL_H__ */

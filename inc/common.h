@@ -21,6 +21,7 @@ typedef struct cominitCliArgs {
 
     char devNodeRootFs[COMINIT_ROOTFS_DEV_PATH_MAX];  ///< Holds the Rootfs device node.
     char devNodeBlob[COMINIT_ROOTFS_DEV_PATH_MAX];    ///< Holds the blob device node.
+    char devNodeCrypt[COMINIT_ROOTFS_DEV_PATH_MAX];   ///< Holds the crypt device node.
 } cominitCliArgs_t;
 
 /**

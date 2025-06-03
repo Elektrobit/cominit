@@ -48,8 +48,10 @@
  */
 static int cominitNftwRemove(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf);
 
-/* Setup of minimal environment we need in initramfs. For now, devtmpfs is enough for us. */
+/* Setup of minimal environment we need in initramfs. For now, devtmpfs and proc are enough for us. */
 int cominitSetupSysfiles(void) {
+    umask(0);
+
     if (mkdir("/dev", 0755) == -1) {
         if (errno != EEXIST) {
             cominitErrnoPrint("Could not create /dev directory.");
@@ -63,6 +65,22 @@ int cominitSetupSysfiles(void) {
         }
         cominitInfoPrint("/dev is already mounted. Skipping.");
     }
+
+    if (mkdir("/proc", 0555) == -1) {
+        if (errno != EEXIST) {
+            cominitErrnoPrint("Could not create /proc directory: ");
+            return -1;
+        }
+    }
+    if (mount("none", "/proc", "proc", MS_NODEV | MS_NOEXEC | MS_NOSUID, NULL) == -1) {
+        if (errno != EBUSY) {
+            cominitErrnoPrint("Could not mount procfs.");
+            return -1;
+        }
+        cominitInfoPrint("/proc is already mounted. Skipping.");
+    }
+
+    umask(0022);
     return 0;
 }
 
