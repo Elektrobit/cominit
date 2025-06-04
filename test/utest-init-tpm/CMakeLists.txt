@@ -19,7 +19,10 @@ create_unit_test(
     ${TSS2_ESYS_INCLUDE_DIRS}
     ${TSS2_TCTILDR_INCLUDE_DIRS}
   LIBRARIES
-    libmockfunctions
+    libmock_dmctl
+    libmock_libc
+    libmock_libmbedtls
+    libmock_libtss2
   WRAPS
     -Wl,--wrap=Tss2_TctiLdr_Initialize
     -Wl,--wrap=Tss2_TctiLdr_Finalize
@@ -27,10 +30,26 @@ create_unit_test(
     -Wl,--wrap=Esys_Initialize
     -Wl,--wrap=Esys_PCR_Extend
     -Wl,--wrap=Esys_Finalize
+    -Wl,--wrap=Esys_Finalize
+    -Wl,--wrap=Esys_Free
+    -Wl,--wrap=Esys_TR_FromTPMPublic
+    -Wl,--wrap=Esys_Load
+    -Wl,--wrap=Esys_PolicyPCR
+    -Wl,--wrap=Esys_StartAuthSession
+    -Wl,--wrap=Esys_Unseal
+    -Wl,--wrap=Esys_FlushContext
+    -Wl,--wrap=Esys_CreatePrimary
+    -Wl,--wrap=Esys_PolicyGetDigest
+    -Wl,--wrap=Esys_Create
+    -Wl,--wrap=Esys_EvictControl
+    -Wl,--wrap=Esys_GetRandom
+    -Wl,--wrap=Esys_Clear
+    -Wl,--wrap=Esys_TR_SetAuth
     -Wl,--wrap=mbedtls_pk_free
     -Wl,--wrap=mbedtls_pk_init
     -Wl,--wrap=mbedtls_pk_parse_public_keyfile
     -Wl,--wrap=mbedtls_pk_write_pubkey_der
     -Wl,--wrap=mbedtls_sha256_ret
     -Wl,--wrap=mbedtls_sha256
+    -Wl,--wrap=cominitSetupDmDeviceCrypt
 )

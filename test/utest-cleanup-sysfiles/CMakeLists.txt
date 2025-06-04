@@ -6,11 +6,12 @@ create_unit_test(
     utest-cleanup-sysfiles.c
     utest-cleanup-sysfiles-success.c
     utest-cleanup-sysfiles-umount-error.c
-    ${PROJECT_SOURCE_DIR}/src/dmctl.c
     ${PROJECT_SOURCE_DIR}/src/minsetup.c
     ${PROJECT_SOURCE_DIR}/src/output.c
   LIBRARIES
-    libmockfunctions
+    libmock_dmctl
+    libmock_libc    
   WRAPS
     -Wl,--wrap=umount2
+    -Wl,--wrap=cominitSetupDmDevice
 )

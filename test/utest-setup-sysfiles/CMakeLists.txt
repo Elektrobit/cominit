@@ -7,12 +7,13 @@ create_unit_test(
     utest-setup-sysfiles-success.c
     utest-setup-sysfiles-mount-error.c
     utest-setup-sysfiles-mkdir-error.c
-    ${PROJECT_SOURCE_DIR}/src/dmctl.c
     ${PROJECT_SOURCE_DIR}/src/minsetup.c
     ${PROJECT_SOURCE_DIR}/src/output.c
   LIBRARIES
-    libmockfunctions
+    libmock_dmctl  
+    libmock_libc
   WRAPS
     -Wl,--wrap=mount
     -Wl,--wrap=mkdir
+    -Wl,--wrap=cominitSetupDmDevice
 )

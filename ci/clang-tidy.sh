@@ -35,4 +35,4 @@ for d in $BASEDIR/test/utest-*/; do
 done
 
 # run clang-tidy for mocks
-clang-tidy "${CLANG_TIDY_FLAGS[@]}" -header-filter='inc\/*.h' $BASEDIR/test/mocks/*.c 2>&1 | tee result/clang-tidy/report-mocks
+clang-tidy "${CLANG_TIDY_FLAGS[@]}" -header-filter='inc\/*.h' $BASEDIR/test/mocks/*/*.c 2>&1 | tee result/clang-tidy/report-mocks
