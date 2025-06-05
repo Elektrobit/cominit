@@ -9,11 +9,16 @@
 #include <sys/mount.h>
 
 #define MNT_SRC "none"                     ///< Mount source parameter
-#define MNT_TGT "/dev"                     ///< Mount target parameter
-#define MNT_TYPE "devtmpfs"                ///< Mount file system type
-#define MNT_FLAGS (MS_NOEXEC | MS_NOSUID)  ///< Mount flags for the devtmpfs
+#define MNT_TGT_DEV "/dev"                 ///< Mount target parameter
+#define MNT_TGT_PROC "/proc"               ///< Mount target parameter
+#define MNT_TYPE_DEV "devtmpfs"            ///< Mount file system type
+#define MNT_TYPE_PROC "proc"                ///< Mount file system type
+#define MNT_FLAGS_DEV (MS_NOEXEC | MS_NOSUID)  ///< Mount flags for the devtmpfs
+#define MNT_FLAGS_PROC (MS_NODEV | MS_NOEXEC | MS_NOSUID)  ///< Mount flags for the proc
 #define MNT_DATA NULL                      ///< Mount data parameter
-#define DIR_MODE 0755                      ///< Directory mode for the devtmpfs
+#define DIR_MODE_DEV 0755                  ///< Directory mode for the devtmpfs
+#define DIR_MODE_PROC 0555                 ///< Directory mode for the proc
+
 
 /**
  * Unit test for cominitSetupSysfiles() mount() error code path.
