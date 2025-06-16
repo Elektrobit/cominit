@@ -31,6 +31,15 @@
     } while (0)
 
 /**
+ * Structure for handling device-mapper ioctl operations.
+ */
+typedef struct cominitDmIoctlData {
+    struct dm_ioctl ioctl;                  ///< Header structure used by all device-mapper ioctls.
+    struct dm_target_spec tSpec;            ///< Specifications about the device mapper table.
+    char dmTbl[COMINIT_DM_TABLE_SIZE_MAX];  ///< The device mapper table.
+} cominitDmIoctlData_t;
+
+/**
  * Get the sectors of a partition.
  *
  * Uses the BLKGETSIZE64 ioctl() to return the number of sectors.
@@ -101,6 +110,54 @@ static int cominitDmctlCheckForCryptoAlg(const char *algorithm) {
     return -1;
 }
 
+/**
+ * Create a new device-mapper device.
+ *
+ * @param dmCtlFd  An open file descriptor to /dev/mapper/control.
+ * @param dmi  Pointer to a cominitDmIoctlData_t structure.
+ * @param name  The name of the new device-mapper device.
+ *
+ * @return  0 on success, -1 otherwise
+ */
+static int cominitDmctlCreateNewDmDevice(int dmCtlFd, cominitDmIoctlData_t *dmi, const char *name) {
+    memset(&dmi->ioctl, 0, sizeof(dmi->ioctl));
+    cominitIoctlSetVersion(dmi->ioctl);
+    dmi->ioctl.data_size = sizeof(dmi->ioctl);
+    strcpy(dmi->ioctl.name, name);
+
+    return ioctl(dmCtlFd, (int)DM_DEV_CREATE, &dmi->ioctl);
+}
+
+/**
+ * Start a new device-mapper device.
+ *
+ * @param dmCtlFd  An open file descriptor to /dev/mapper/control.
+ * @param dmi  Pointer to a cominitDmIoctlData_t structure.
+ * @param devId  The Id of the new device-mapper device.
+ *
+ * @return  0 on success, -1 otherwise
+ */
+static int cominitDmctlStartDmDevice(int dmCtlFd, cominitDmIoctlData_t *dmi, uint64_t devId) {
+    memset(&dmi->ioctl, 0, sizeof(dmi->ioctl));
+    cominitIoctlSetVersion(dmi->ioctl);
+    dmi->ioctl.data_size = sizeof(dmi->ioctl);
+    dmi->ioctl.dev = devId;
+    // DM_SUSPEND_FLAG is unset, so DM_DEV_SUSPEND will resume.
+    return ioctl(dmCtlFd, (int)DM_DEV_SUSPEND, &dmi->ioctl);
+}
+
+/**
+ * Load a device-mapper table into the kernel.
+ *
+ * @param dmCtlFd  An open file descriptor to /dev/mapper/control.
+ * @param dmi  Pointer to a cominitDmIoctlData_t structure.
+ *
+ * @return  0 on success, -1 otherwise
+ */
+static inline int cominitDmctlLoadDmTable(int dmCtlFd, cominitDmIoctlData_t *dmi) {
+    return ioctl(dmCtlFd, (int)DM_TABLE_LOAD, &dmi->ioctl);
+}
+
 int cominitSetupDmDevice(cominitRfsMetaData_t *rfsMeta) {
     if (rfsMeta == NULL) {
         cominitErrPrint("Input parameter must not be NULL.");
@@ -121,27 +178,19 @@ int cominitSetupDmDevice(cominitRfsMetaData_t *rfsMeta) {
         return -1;
     }
 
-    struct cominitDmIoctlData_t {
-        struct dm_ioctl ioctl;
-        struct dm_target_spec tSpec;
-        char dmTbl[COMINIT_DM_TABLE_SIZE_MAX];
-    } dmi;
-
     int dmCtlFd = open("/dev/" DM_DIR "/" DM_CONTROL_NODE, O_RDWR);
     if (dmCtlFd == -1) {
         cominitErrnoPrint("Could not open \'/dev" DM_DIR "/" DM_CONTROL_NODE "\'.");
         return -1;
     }
 
-    // Create new dm device.
-    memset(&dmi.ioctl, 0, sizeof(dmi.ioctl));
-    cominitIoctlSetVersion(dmi.ioctl);
-    dmi.ioctl.data_size = sizeof(dmi.ioctl);
-    strcpy(dmi.ioctl.name, COMINIT_ROOTFS_DM_NAME);
-    if (ioctl(dmCtlFd, (int)DM_DEV_CREATE, &dmi.ioctl) == -1) {
+    cominitDmIoctlData_t dmi;
+    if (cominitDmctlCreateNewDmDevice(dmCtlFd, &dmi, COMINIT_ROOTFS_DM_NAME) == -1) {
         cominitErrnoPrint("Could not create new device mapper device using ioctl().");
+        close(dmCtlFd);
         return -1;
     }
+
     uint64_t devId = dmi.ioctl.dev;
 
     // Load dm-verity table to device mapper.
@@ -150,7 +199,7 @@ int cominitSetupDmDevice(cominitRfsMetaData_t *rfsMeta) {
     dmi.ioctl.dev = devId;
     dmi.ioctl.flags = rfsMeta->ro ? DM_READONLY_FLAG : 0;
     dmi.ioctl.target_count = 1;
-    dmi.ioctl.data_start = offsetof(struct cominitDmIoctlData_t, tSpec) - offsetof(struct cominitDmIoctlData_t, ioctl);
+    dmi.ioctl.data_start = offsetof(cominitDmIoctlData_t, tSpec) - offsetof(cominitDmIoctlData_t, ioctl);
     dmi.tSpec.sector_start = 0;
     dmi.tSpec.length = rfsMeta->dmVerintDataSizeBytes / 512;
     strncpy(dmi.tSpec.target_type, dmTgtStr, sizeof(dmi.tSpec.target_type));
@@ -158,59 +207,36 @@ int cominitSetupDmDevice(cominitRfsMetaData_t *rfsMeta) {
     char *dmTblEnd = stpncpy(dmi.dmTbl, rfsMeta->dmTableVerint, sizeof(dmi.dmTbl) - 1);
     *dmTblEnd = '\0';
     dmi.ioctl.data_size = dmTblEnd + 1 - (char *)&dmi.ioctl;
-    if (ioctl(dmCtlFd, (int)DM_TABLE_LOAD, &dmi.ioctl) == -1) {
+    if (cominitDmctlLoadDmTable(dmCtlFd, &dmi) == -1) {
         cominitErrnoPrint("Could not load device mapper table using ioctl().");
+        close(dmCtlFd);
         return -1;
     }
 
-    // Let device mapper resume.
-    memset(&dmi.ioctl, 0, sizeof(dmi.ioctl));
-    cominitIoctlSetVersion(dmi.ioctl);
-    dmi.ioctl.data_size = sizeof(dmi.ioctl);
-    dmi.ioctl.dev = devId;
-    // DM_SUSPEND_FLAG is unset, so DM_DEV_SUSPEND will resume.
-    if (ioctl(dmCtlFd, (int)DM_DEV_SUSPEND, &dmi.ioctl) == -1) {
+    if (cominitDmctlStartDmDevice(dmCtlFd, &dmi, devId) == -1) {
         cominitErrnoPrint("Could not make the device mapper resume using ioctl().");
+        close(dmCtlFd);
         return -1;
     }
 
     // Write new device path to metadata struct and create device node.
     strcpy(rfsMeta->devicePath, "/dev/" DM_DIR "/" COMINIT_ROOTFS_DM_NAME);
-    mode_t devMode = S_IFBLK | 0400;
+    mode_t devMode = S_IFBLK | S_IRUSR;
     if (!rfsMeta->ro) {
-        devMode += 0200;
+        devMode += S_IWUSR;
     }
     if (mknod(rfsMeta->devicePath, devMode, devId) == -1) {
         cominitErrnoPrint("Could not create device-mapper rootfs node at \'%s\'.", rfsMeta->devicePath);
+        close(dmCtlFd);
         return -1;
     }
+
+    close(dmCtlFd);
 
     return 0;
 }
 
 int cominitSetupDmDeviceCrypt(char *device, const char *name, const TPM2B_DIGEST *key, uint64_t offsetSectors) {
-    struct cominitDmIoctlData_t {
-        struct dm_ioctl ioctl;
-        struct dm_target_spec tSpec;
-        char dmTbl[COMINIT_DM_TABLE_SIZE_MAX];
-    } dmi;
-
-    int dmCtlFd = open("/dev/" DM_DIR "/" DM_CONTROL_NODE, O_RDWR);
-    if (dmCtlFd == -1) {
-        cominitErrnoPrint("Could not open \'/dev/" DM_DIR "/" DM_CONTROL_NODE "\'.");
-        return -1;
-    }
-
-    // Create new dm device.
-    memset(&dmi.ioctl, 0, sizeof(dmi.ioctl));
-    cominitIoctlSetVersion(dmi.ioctl);
-    dmi.ioctl.data_size = sizeof(dmi.ioctl);
-    strcpy(dmi.ioctl.name, name);
-    if (ioctl(dmCtlFd, (int)DM_DEV_CREATE, &dmi.ioctl) == -1) {
-        cominitErrnoPrint("Could not create new device mapper device using ioctl().");
-        return -1;
-    }
-
     if (access(device, F_OK) != 0) {
         cominitErrnoPrint("/'%s/' not ready", device);
         return -1;
@@ -218,6 +244,20 @@ int cominitSetupDmDeviceCrypt(char *device, const char *name, const TPM2B_DIGEST
 
     if (cominitDmctlCheckForCryptoAlg("xts(aes)") != 0) {
         cominitErrnoPrint("Kernel does not support /'%s'/ crypt algorithm", "xts(aes)");
+        return -1;
+    }
+
+    int dmCtlFd = open("/dev/" DM_DIR "/" DM_CONTROL_NODE, O_RDWR);
+    if (dmCtlFd == -1) {
+        cominitErrnoPrint("Could not open \'/dev/" DM_DIR "/" DM_CONTROL_NODE "\'.");
+        return -1;
+    }
+
+    cominitDmIoctlData_t dmi;
+    if (cominitDmctlCreateNewDmDevice(dmCtlFd, &dmi, name) == -1) {
+        cominitErrnoPrint("Could not create new device mapper device using ioctl().");
+        close(dmCtlFd);
+        return -1;
     }
 
     // Load dm-verity table to device mapper.
@@ -229,6 +269,7 @@ int cominitSetupDmDeviceCrypt(char *device, const char *name, const TPM2B_DIGEST
     unsigned long totalSectors = 0;
     if (cominitDmctlGetSectors(device, &totalSectors) == -1) {
         cominitErrnoPrint("Could not calculate sectors of device '/%s/'.", device);
+        close(dmCtlFd);
         return -1;
     }
     unsigned long mapLength = totalSectors - offsetSectors;
@@ -240,6 +281,7 @@ int cominitSetupDmDeviceCrypt(char *device, const char *name, const TPM2B_DIGEST
         /* Overwrite key in memory */
         memset(keyHex, 0, hexLen);
         free(keyHex);
+        close(dmCtlFd);
         return -1;
     }
 
@@ -264,33 +306,27 @@ int cominitSetupDmDeviceCrypt(char *device, const char *name, const TPM2B_DIGEST
     dmi.ioctl.dev = devId;
     dmi.ioctl.flags = 0;
     dmi.ioctl.target_count = 1;
-    dmi.ioctl.data_start = offsetof(struct cominitDmIoctlData_t, tSpec) - offsetof(struct cominitDmIoctlData_t, ioctl);
+    dmi.ioctl.data_start = offsetof(cominitDmIoctlData_t, tSpec) - offsetof(cominitDmIoctlData_t, ioctl);
     dmi.ioctl.data_size = dmi.ioctl.data_start + dmi.tSpec.next;
-
-    if (ioctl(dmCtlFd, (int)DM_TABLE_LOAD, &dmi.ioctl) == -1) {
+    if (cominitDmctlLoadDmTable(dmCtlFd, &dmi) == -1) {
         cominitErrnoPrint("Could not load device mapper table using ioctl().");
+        close(dmCtlFd);
         return -1;
     }
 
     /* Overwrite key in memory */
     memset(&dmi.dmTbl, 0, sizeof(dmi.dmTbl));
 
-    // Let device mapper resume.
-    memset(&dmi.ioctl, 0, sizeof(dmi.ioctl));
-    cominitIoctlSetVersion(dmi.ioctl);
-    dmi.ioctl.data_size = sizeof(dmi.ioctl);
-    dmi.ioctl.dev = devId;
-    // DM_SUSPEND_FLAG is unset, so DM_DEV_SUSPEND will resume.
-    if (ioctl(dmCtlFd, (int)DM_DEV_SUSPEND, &dmi.ioctl) == -1) {
+    if (cominitDmctlStartDmDevice(dmCtlFd, &dmi, devId) == -1) {
         cominitErrnoPrint("Could not make the device mapper resume using ioctl().");
+        close(dmCtlFd);
         return -1;
     }
 
     // create device node.
-    mode_t devMode = S_IFBLK | 0400 | 0200;
-
-    if (mknod(COMINIT_TPM_SECURE_STORAGE_LOCATION, devMode, devId) == -1) {
+    if (mknod(COMINIT_TPM_SECURE_STORAGE_LOCATION, S_IFBLK | S_IRUSR | S_IWUSR, devId) == -1) {
         cominitErrnoPrint("Could not create device-mapper rootfs node at \'%s\'.", COMINIT_TPM_SECURE_STORAGE_LOCATION);
+        close(dmCtlFd);
         return -1;
     }
 
