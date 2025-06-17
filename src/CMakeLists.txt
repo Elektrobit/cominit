@@ -12,6 +12,7 @@ endif()
 add_executable(
   cominit
   cominit.c
+  crypto.c
   keyring.c
   minsetup.c
   meta.c

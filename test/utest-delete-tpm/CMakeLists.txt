@@ -26,7 +26,7 @@ create_unit_test(
   LIBRARIES
     libmock_dmctl
     libmock_libc
-    libmock_libmbedtls
+    libmock_crypto
     libmock_libtss2
   WRAPS
     -Wl,--wrap=Tss2_TctiLdr_Initialize
@@ -49,11 +49,6 @@ create_unit_test(
     -Wl,--wrap=Esys_GetRandom
     -Wl,--wrap=Esys_Clear
     -Wl,--wrap=Esys_TR_SetAuth
-    -Wl,--wrap=mbedtls_pk_free
-    -Wl,--wrap=mbedtls_pk_init
-    -Wl,--wrap=mbedtls_pk_parse_public_keyfile
-    -Wl,--wrap=mbedtls_pk_write_pubkey_der
-    -Wl,--wrap=mbedtls_sha256_ret
-    -Wl,--wrap=mbedtls_sha256
+    -Wl,--wrap=cominitCreateSHA256DigestfromKeyfile
     -Wl,--wrap=cominitSetupDmDeviceCrypt
 )

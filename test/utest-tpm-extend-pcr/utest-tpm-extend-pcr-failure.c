@@ -35,6 +35,8 @@ void cominitTpmExtendPCRTestNegativeIntegerParamFailure(void **state) {
     const int idxOffset = -1;
     const ESYS_TR idx = ESYS_TR_PCR0 + idxOffset;
 
+    will_return(__wrap_cominitCreateSHA256DigestfromKeyfile, 0);
+
     expect_string(__wrap_Esys_PCR_Extend, esysContext, esysCtx);
     expect_value(__wrap_Esys_PCR_Extend, pcrHandle, idx);
     expect_value(__wrap_Esys_PCR_Extend, shandle1, ESYS_TR_PASSWORD);
@@ -56,6 +58,8 @@ void cominitTpmExtendPCRTestTooLargeParamFailure(void **state) {
     const int idxOffset = TPM2_PT_PCR_COUNT + 1;
     const ESYS_TR idx = ESYS_TR_PCR0 + idxOffset;
 
+    will_return(__wrap_cominitCreateSHA256DigestfromKeyfile, 0);
+
     expect_string(__wrap_Esys_PCR_Extend, esysContext, esysCtx);
     expect_value(__wrap_Esys_PCR_Extend, pcrHandle, idx);
     expect_value(__wrap_Esys_PCR_Extend, shandle1, ESYS_TR_PASSWORD);
@@ -76,6 +80,8 @@ void cominitTpmExtendPCRTestTooLargeParamOnEdgeFailure(void **state) {
 
     const int idxOffset = TPM2_PT_PCR_COUNT;
     const ESYS_TR idx = ESYS_TR_PCR0 + idxOffset;
+
+    will_return(__wrap_cominitCreateSHA256DigestfromKeyfile, 0);
 
     expect_string(__wrap_Esys_PCR_Extend, esysContext, esysCtx);
     expect_value(__wrap_Esys_PCR_Extend, pcrHandle, idx);

@@ -12,16 +12,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "crypto.h"
 #include "dmctl.h"
-#include "mbedtls/error.h"
-#include "mbedtls/pk.h"
-#include "mbedtls/sha256.h"
-#include "mbedtls/version.h"
 #include "meta.h"
 #include "output.h"
-
-#define DER_BUFFER_SIZE 1600  ///< buffer size to hold RSA‑4k key.
-#define SHA256_LEN 32         ///< size of SHA256 digest.
 
 #define POLICY_FAILURE_RC 0x0000099d  ///< return code on policy failure.
 
@@ -674,49 +668,25 @@ int cominitInitTpm(cominitTpmContext_t *tpmCtx) {
 
 int cominitTpmExtendPCR(cominitTpmContext_t *tpmCtx, const char *keyfile, unsigned long pcrIndex) {
     int result = EXIT_FAILURE;
-    int err = -1;
     unsigned char digest[SHA256_LEN];
-    mbedtls_pk_context pkCtx;
-    TSS2_RC rc = TSS2_ESYS_RC_GENERAL_FAILURE;
 
     if (tpmCtx == NULL || keyfile == NULL) {
         cominitErrPrint("Invalid parameters");
     } else {
-        mbedtls_pk_init(&pkCtx);
-        err = mbedtls_pk_parse_public_keyfile(&pkCtx, keyfile);
+        result = cominitCreateSHA256DigestfromKeyfile(keyfile, digest, ARRAY_SIZE(digest));
+        if (result != EXIT_SUCCESS) {
+            cominitErrPrint("Could not hash the rootfs public key");
+        } else {
+            ESYS_TR pcrTR = ESYS_TR_PCR0 + pcrIndex;
+            TPML_DIGEST_VALUES vals = {.count = 1};
+            vals.digests[0].hashAlg = TPM2_ALG_SHA256;
+            memcpy(vals.digests[0].digest.sha256, digest, sizeof(digest));
 
-        if (err == 0) {
-            unsigned char der[DER_BUFFER_SIZE];
-            int derLen = mbedtls_pk_write_pubkey_der(&pkCtx, der, sizeof(der));
-            if (derLen > 0) {
-                const unsigned char *pubKeyDer = der + sizeof(der) - derLen;
-#if MBEDTLS_VERSION_MAJOR == 2
-                err = mbedtls_sha256_ret(pubKeyDer, (size_t)derLen, digest, 0);
-#else
-                err = mbedtls_sha256(pubKeyDer, (size_t)derLen, digest, 0);
-#endif
-                if (err == 0) {
-                    ESYS_TR pcrTR = ESYS_TR_PCR0 + pcrIndex;
-                    TPML_DIGEST_VALUES vals = {.count = 1};
-                    vals.digests[0].hashAlg = TPM2_ALG_SHA256;
-                    memcpy(vals.digests[0].digest.sha256, digest, sizeof(digest));
-
-                    rc = Esys_PCR_Extend(tpmCtx->esysCtx, pcrTR, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE, &vals);
-                }
-            } else {
-                err = -1;
+            TSS2_RC rc = Esys_PCR_Extend(tpmCtx->esysCtx, pcrTR, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE, &vals);
+            if (rc != TSS2_RC_SUCCESS) {
+                result = EXIT_FAILURE;
             }
         }
-
-        mbedtls_pk_free(&pkCtx);
-    }
-
-    if (err != 0) {
-        cominitErrPrint("Could not hash the rootfs public key");
-    }
-
-    if (rc == TSS2_RC_SUCCESS) {
-        result = EXIT_SUCCESS;
     }
 
     return result;

@@ -21,6 +21,8 @@ void cominitTpmExtendPCRTestIdx0Success(void **state) {
     const int idxOffset = 0;
     const ESYS_TR idx = ESYS_TR_PCR0 + idxOffset;
 
+    will_return(__wrap_cominitCreateSHA256DigestfromKeyfile, 0);
+
     expect_string(__wrap_Esys_PCR_Extend, esysContext, esysCtx);
     expect_value(__wrap_Esys_PCR_Extend, pcrHandle, idx);
     expect_value(__wrap_Esys_PCR_Extend, shandle1, ESYS_TR_PASSWORD);
@@ -41,6 +43,8 @@ void cominitTpmExtendPCRTestIdx2Success(void **state) {
 
     const int idxOffset = 2;
     const ESYS_TR idx = ESYS_TR_PCR0 + idxOffset;
+
+    will_return(__wrap_cominitCreateSHA256DigestfromKeyfile, 0);
 
     expect_string(__wrap_Esys_PCR_Extend, esysContext, esysCtx);
     expect_value(__wrap_Esys_PCR_Extend, pcrHandle, idx);
