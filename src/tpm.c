@@ -154,6 +154,7 @@ static int cominitTpmCreateKey(ESYS_CONTEXT *ectx, TPM2B_DIGEST **key) {
     TSS2_RC rc = Esys_GetRandom(ectx, ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, SHA256_LEN, key);
 
     if (rc == TSS2_RC_SUCCESS && *key != NULL) {
+        cominitSensitivePrint("Key with size %d created", (*key)->size);
         result = EXIT_SUCCESS;
     }
 

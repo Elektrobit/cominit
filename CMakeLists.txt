@@ -13,6 +13,7 @@ include(GNUInstallDirs)
 option(UNIT_TESTS "Build unit tests" ON)
 option(FAKE_HSM "Emulate a HSM for development" OFF)
 option(USE_TPM "Add TPM functionality for development" OFF)
+option(ENABLE_SENSITIVE_LOGGING "Print sensitive logs" OFF)
 set(FAKE_HSM_KEY_DESCS
     "dm-integrity-hmac-secret dm-integrity-jmac-secret dm-integrity-jcrypt-secret"
     CACHE STRING

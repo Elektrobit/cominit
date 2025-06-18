@@ -33,6 +33,10 @@ target_link_libraries(
     ${MBEDTLS_CRYPTO_LIBRARY}
 )
 
+if(ENABLE_SENSITIVE_LOGGING)
+  target_compile_definitions(cominit PRIVATE COMINIT_ENABLE_SENSITIVE_LOGGING)
+endif()
+
 if(USE_TPM)
   target_compile_definitions(cominit PRIVATE COMINIT_USE_TPM)
 

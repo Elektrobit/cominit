@@ -17,6 +17,7 @@
   - [HSM Emulation](#hsm-emulation)
   - [TPM Usage](#tpm-usage)
   - [Secure Storage](#secure-storage)
+  - [log level](#log-level)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -252,3 +253,20 @@ part secureStorage --align 1024 --fixed-size 16M
 The corresponding device nodes should then be passed along with the PCR list to cominit via kernel command line
 (i.e `cominit.blob=/dev/sda5` , `cominit.crypt=/dev/sda6` and `cominit.pcrSeal=10,11,12`).
 
+### log level
+
+Cominit supports configurable log levels that can be set via command line
+(i.e "logLevel=4" or "cominit.logLevel=4" to set level to DEBUG).
+
+Available levels are
+```
+    COMINIT_LOG_LEVEL_NONE = 0,   ///< No print outs.
+    COMINIT_LOG_LEVEL_ERR,        ///< Only error print outs.
+    COMINIT_LOG_LEVEL_WARN,       ///< Only error and warning print outs.
+    COMINIT_LOG_LEVEL_INFO,       ///< Only error, warning and info print outs.
+    COMINIT_LOG_LEVEL_DEBUG,      ///< Only error, warning, info and debug print outs.
+    COMINIT_LOG_LEVEL_SENSITIVE,  ///< Only error, warning, info, debug and sensitive print outs.
+```
+Sensitive outputs are additionally guarded and can be activated by compiling with -DENABLE_SENSITIVE_LOGGING=On flag
+and then setting the log level to SENSITIVE ("logLevel=5" or "cominit.logLevel=5"). The default log level
+is INFO ("logLevel=3" or "cominit.logLevel=3"). The default will be applied if no or an invalid log level is given.

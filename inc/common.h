@@ -10,6 +10,8 @@
 #include <tss2/tss2_esys.h>
 
 #include "meta.h"
+#include "output.h"
+
 /**
  * Structure holding parsed options from argv.
  */
@@ -18,6 +20,7 @@ typedef struct cominitCliArgs {
     unsigned long pcrIndex;                    ///< The index of the SHA-256 bank of the TPM.
     int pcrSealCount;                          ///< The number of registers in the SHA-256 bank used for sealing.
     unsigned long pcrSeal[TPM2_PT_PCR_COUNT];  ///< The list of registers in the SHA-256 bank used for sealing.
+    cominitLogLevelE_t visibleLogLevel;        ///< The visible log level.
 
     char devNodeRootFs[COMINIT_ROOTFS_DEV_PATH_MAX];  ///< Holds the Rootfs device node.
     char devNodeBlob[COMINIT_ROOTFS_DEV_PATH_MAX];    ///< Holds the blob device node.

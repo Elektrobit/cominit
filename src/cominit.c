@@ -118,7 +118,12 @@ static const char *cominitParseArgValue(const char *arg, const char *param1, con
  *         return an error code.
  */
 int main(int argc, char *argv[], char *envp[]) {
-    cominitCliArgs_t argCtx = {0};
+    cominitCliArgs_t argCtx = {.visibleLogLevel = COMINIT_LOG_LEVEL_INVALID,
+                               .pcrSet = false,
+                               .pcrSealCount = 0,
+                               .devNodeBlob[0] = '\0',
+                               .devNodeCrypt[0] = '\0',
+                               .devNodeRootFs[0] = '\0'};
     const char *argValue = NULL;
 
     for (int i = 0; i < argc; i++) {
@@ -133,6 +138,12 @@ int main(int argc, char *argv[], char *envp[]) {
         if ((argValue = cominitParseArgValue(argv[i], "root", "cominit.rootfs")) != NULL) {
             if (cominitParseDeviceNode(argCtx.devNodeRootFs, argValue) == EXIT_FAILURE) {
                 cominitErrPrint("\'%s\' requires a valid device node ", argv[i]);
+                continue;
+            }
+        }
+        if ((argValue = cominitParseArgValue(argv[i], "logLevel", "cominit.logLevel")) != NULL) {
+            if (cominitOutputParseLogLevel(&argCtx.visibleLogLevel, argValue) == EXIT_FAILURE) {
+                cominitErrPrint("\'%s\' requires a valid log level ", argv[i]);
                 continue;
             }
         }
@@ -165,6 +176,7 @@ int main(int argc, char *argv[], char *envp[]) {
     }
     setsid();
     umask(0);
+    cominitOutputSetVisibleLogLevel(argCtx.visibleLogLevel);
     cominitInfoPrint("BaseOS Compact Init version %s started.", cominitGetVersionString());
 
     /* Mount devtmpfs so we have a minimal system */
@@ -174,8 +186,8 @@ int main(int argc, char *argv[], char *envp[]) {
         goto rescue;
     }
 
-    /* In case we are built to emulate a HSM, enroll the standard development key for dm-integrity HMAC in the Kernel
-     * user keyring. */
+/* In case we are built to emulate a HSM, enroll the standard development key for dm-integrity HMAC in the Kernel
+ * user keyring. */
 #ifdef COMINIT_FAKE_HSM
     if (cominitInitFakeHsm() == -1) {
         cominitErrPrint(
