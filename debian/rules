@@ -5,6 +5,10 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all optimize=-lto
 %:
 	dh $@ --buildsystem=cmake --builddirectory=debian/build
 
+override_dh_auto_configure:
+	dh_auto_configure -- \
+			-DUSE_TPM=On
+
 override_dh_auto_install:
 	dh_auto_install
 
