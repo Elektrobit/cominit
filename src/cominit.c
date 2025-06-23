@@ -79,6 +79,7 @@ static void cominitPrintVersion(void);
  * Includes version message via cominitPrintVersion().
  */
 static void cominitPrintUsage(void);
+#ifdef COMINIT_USE_TPM
 /**
  * Checks at RT the parsed options to determine if a TPM should be used.
  *
@@ -86,6 +87,7 @@ static void cominitPrintUsage(void);
  * @return  true if used, false otherwise
  */
 static inline bool cominitUseTpm(cominitCliArgs_t *ctx);
+#endif
 /**
  * Parses a device node from a value in an argument of argv.
  *
@@ -358,6 +360,7 @@ static int cominitParseDeviceNode(char *device, const char *argValue) {
     return result;
 }
 
+#ifdef COMINIT_USE_TPM
 static inline bool cominitUseTpm(cominitCliArgs_t *argCtx) {
     bool useTpm = false;
 
@@ -369,6 +372,7 @@ static inline bool cominitUseTpm(cominitCliArgs_t *argCtx) {
 
     return useTpm;
 }
+#endif
 
 static const char *cominitParseArgValue(const char *arg, const char *key1, const char *key2) {
     const char *value = NULL;
