@@ -106,31 +106,6 @@ static int cominitBinReadall(uint8_t *buf, int fd, off_t offset, size_t len);
  * @return  0 on verification success, -1 otherwise
  */
 static int cominitVerifySig(const uint8_t *data, size_t dataLen, const uint8_t *signature, const char *keyfile);
-/**
- * Get the size of a partition.
- *
- * Uses the BLKGETSIZE64 ioctl() to return the size in Bytes. The given file descriptor must be opened and associated
- * with a partition block device.
- *
- * @param partSize  Return pointer for the size in Bytes.
- * @param fd         The partition file descriptor.
- *
- * @return  0 on success, -1 otherwise
- */
-static int cominitGetPartSize(uint64_t *partSize, int fd);
-/**
- * Convert a series of Bytes to a hexadecimal string representation.
- *
- * Will read \a n Bytes from src and write \f$ 2n+1 \f$ (including the null-Byte) characters to dest. Hexadecimal digits
- * `[a-f]` wil be written in lower-case.
- *
- * @param dest  The output string, needs to have space for at least \f$ 2n+1 \f$ characters.
- * @param src   The array of bytes to convert.
- * @param n     The amount of Bytes in src t convert.
- *
- * @return  0 on success, -1 otherwise
- */
-static inline int cominitBytesToHex(char *dest, const uint8_t *src, size_t n);
 
 int cominitLoadVerifyMetadata(cominitRfsMetaData_t *meta, const char *keyfile) {
     uint8_t metabuf[COMINIT_PART_META_DATA_SIZE] = {0};
@@ -260,7 +235,7 @@ static int cominitVerifySig(const uint8_t *data, size_t dataLen, const uint8_t *
     return 0;
 }
 
-static int cominitGetPartSize(uint64_t *partSize, int fd) {
+int cominitGetPartSize(uint64_t *partSize, int fd) {
     if (partSize == NULL) {
         cominitErrPrint("Return pointer must not be NULL.");
         return -1;
@@ -578,7 +553,7 @@ static inline int cominitGenIntegrityDmTbl(cominitRfsMetaData_t *meta, char *dmM
     return 0;
 }
 
-static inline int cominitBytesToHex(char *dest, const uint8_t *src, size_t n) {
+int cominitBytesToHex(char *dest, const uint8_t *src, size_t n) {
     if (dest == NULL || src == NULL) {
         cominitErrPrint("Input parameters must not be NULL.");
         return -1;
@@ -589,5 +564,6 @@ static inline int cominitBytesToHex(char *dest, const uint8_t *src, size_t n) {
             return -1;
         }
     }
+
     return 0;
 }

@@ -1,41 +1,6 @@
 # SPDX-License-Identifier: MIT
-function(create_mock_lib)
-  cmake_parse_arguments(PARSED_ARGS "" "NAME" "SOURCES;INCLUDES;LIBRARIES;DEFINITIONS" ${ARGN})
-  message("create ${PARSED_ARGS_NAME} ${PARSED_SOURCES}")
 
-  add_library(${PARSED_ARGS_NAME} STATIC ${PARSED_ARGS_SOURCES})
-
-  if(PARSED_ARGS_DEFINITIONS)
-    target_compile_definitions(${PARSED_ARGS_NAME} PRIVATE ${PARSED_ARGS_DEFINITIONS})
-  endif()
-
-  target_link_libraries(${PARSED_ARGS_NAME} PRIVATE cmocka ${PARSED_ARGS_LIBRARIES})
-
-  target_include_directories(
-    ${PARSED_ARGS_NAME}
-    PRIVATE
-    ${PROJECT_SOURCE_DIR}/test
-    INTERFACE
-    ${PARSED_ARGS_INCLUDES}
-  )
-endfunction()
-
-create_mock_lib(NAME libmockfunctions
-    SOURCES
-    mock_Esys_Finalize.c
-    mock_Esys_Initialize.c
-    mock_Esys_PCR_Extend.c
-    mock_Esys_SelfTest.c
-    mock_Tss2_TctiLdr_Finalize.c
-    mock_Tss2_TctiLdr_Initialize.c
-    mock_mbedtls_pk_free.c
-    mock_mbedtls_pk_init.c
-    mock_mbedtls_pk_parse_public_keyfile.c
-    mock_mbedtls_pk_write_pubkey_der.c
-    mock_mbedtls_sha256_ret.c
-    mock_mbedtls_sha256.c
-    mock_mount.c
-    mock_umount2.c
-    mock_mkdir.c
-    INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}
-)
+add_subdirectory(mock_dmctl)
+add_subdirectory(mock_libc)
+add_subdirectory(mock_libtss2)
+add_subdirectory(mock_libmbedtls)

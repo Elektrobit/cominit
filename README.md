@@ -16,6 +16,7 @@
     - [Signature](#signature)
   - [HSM Emulation](#hsm-emulation)
   - [TPM Usage](#tpm-usage)
+  - [Secure Storage](#secure-storage)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -187,6 +188,67 @@ or not functional. The source file `keyring.h` shows how to define which keys to
 be defined at compile-time and the key files themselves need to be accessible to cominit in the initramfs.
 
 ### TPM Usage
-If compiled with the optional `-DUSE_TPM=On` flag, cominit will add TPM functionality. If the flag is set cominit will 
-look for an argument `pcrExtend` or `cominit.pcrExtend` in its argument vector. If assigned to a valid 
-index (i.e. by pcrExtendIndex=10), cominit will extend this PCR (SHA-256 bank) with the hashed public key found in`/etc/rootfs_key_pub.pem`.
+If compiled with the optional `-DUSE_TPM=On` flag, cominit will add TPM functionality.
+
+To use that functionality the kernel should be configured as:
+
+```
+CONFIG_TCG_TPM=y
+CONFIG_TCG_TIS=y
+CONFIG_TCG_TIS_CORE=y
+CONFIG_SECURITY=y
+CONFIG_PNP=y
+CONFIG_ACPI=y
+CONFIG_PNPACPI=y
+CONFIG_TPM_CRB=y
+```
+
+If the flag is set cominit will look for an argument `pcrExtend` or `cominit.pcrExtend` in its argument vector. 
+If assigned to a valid index (i.e. by pcrExtend=10), cominit will extend this PCR (SHA-256 bank) 
+with the hashed public key found in`/etc/rootfs_key_pub.pem`.
+
+If the flag is set cominit will also look for these arguments in its argument vector:
+  1. `pcrSeal` or `cominit.pcrSeal`: The list of PCR's (SHA-256 bank) that the TPM will build its policy on.
+  1. `blob` or `cominit.blob` : The partitions the TPM saves its sealed objects to.
+  1. `crypt` or `cominit.crypt`: The partition to protect by encryption, hereinafter referred to as `Secure Storage`.
+
+Details on this feature will be given in the next chapter.
+
+### Secure Storage
+`Secure Storage` is an encrypted volume that is initialized on the very first boot:
+On initial boot, cominit generates a unique encryption key for the Secure Storage volume.
+This key is sealed by the TPM using a policy based on a specified list of PCR indices (i.e. `cominit.pcrSeal=10,11,12`).
+The TPM will only unseal the key if the PCR values exactly match those recorded at the time of sealing,
+ensuring that the data on the secure storage can only be accessed in a trusted system state.
+On a successful unsealing cominit uses that key to activate the target partition (i.e. `cominit.crypt=/dev/sda6`)
+as a dm-crypt device and currently mounts it to /mnt.
+
+To activate `Secure Storage` and use this feature properly, three things should be taking care of:
+
+  1. Kernel config: Must support dm-crypt and the used encryption algorithm.
+  1. Partition table: There must be a partition to store the sealed key to and a partition to be encrypted.
+  1. Argument vector: Must contain the device nodes and the list of PCR indices.
+
+Currently cominit uses `aes-xts-plain64` for encryption. Therefor a minimal working kernel config is:
+
+```
+CONFIG_DM_CRYPT=y
+CONFIG_CRYPTO_XTS=y
+CONFIG_CRYPTO_AES=y
+CONFIG_CRYPTO_GHASH=y
+CONFIG_CRYPTO_AES_ARM64=y
+CONFIG_CRYPTO_GF128MUL=y
+CONFIG_CRYPTO_AES_ARM64_NEON_BLK=y
+```
+
+Currently cominit expects an empty volume for encryption and an ext4 formatted volume for saving the sealed key. 
+If wic is used to define partition layouts, working examples for partition table entries are:
+
+```
+part tpmblob --fstype=ext4 --label tpmblob --align 1024 --fixed-size 16M
+part secureStorage --align 1024 --fixed-size 16M
+```
+
+The corresponding device nodes should then be passed along with the PCR list to cominit via kernel command line
+(i.e `cominit.blob=/dev/sda5` , `cominit.crypt=/dev/sda6` and `cominit.pcrSeal=10,11,12`).
+
