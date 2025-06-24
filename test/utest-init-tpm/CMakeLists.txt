@@ -1,5 +1,10 @@
 # SPDX-License-Identifier: MIT
 
+if(NOT USE_TPM)
+    message(STATUS "USE_TPM is off: skipping test")
+    return()
+endif()
+
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(TSS2_ESYS REQUIRED tss2-esys)
 
