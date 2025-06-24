@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 /**
- * @file utest-tpm-exten-pcr-success.c
+ * @file utest-tpm-extend-pcr-success.c
  * @brief Implementation of a success case unit test for cominitTpmParsePCR().
  */
 #include <stdlib.h>
