@@ -59,6 +59,14 @@ Build-Asan:
     paths:
       - build/Asan
 
+Build-Ubsan:
+  stage: build
+  script:
+    - ci/build.sh --clean Ubsan
+  artifacts:
+    paths:
+      - build/Ubsan
+
 Lint:
   stage: test
   needs:
@@ -90,3 +98,13 @@ Unit-Tests-Asan:
   artifacts:
     paths:
       - build/Asan/result
+
+Unit-Tests-Ubsan:
+  stage: test
+  needs:
+    - Build-Ubsan
+  script:
+    - ci/run-utests.sh Ubsan
+  artifacts:
+    paths:
+      - build/Ubsan/result
