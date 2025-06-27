@@ -40,6 +40,11 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/* \
  && ln -fs /usr/share/zoneinfo/UTC /etc/localtime
 
+RUN add-apt-repository -y ppa:elos-team/ppa \
+    && apt-get update \
+    && apt-get install -y cmocka-extensions-dev \
+    && rm -rf /var/lib/apt/lists/*
+
  # Install doctoc
 RUN npm install doctoc -g
 

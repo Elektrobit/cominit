@@ -27,6 +27,9 @@ if [ ! -f "${CMAKE_BUILD_DIR}"/compile_commands.json ]; then
     exit 1
 fi
 
+# remove -fanalyzer as it's unknown to clang
+sed -i -e 's/\-fanalyzer//g' "${CMAKE_BUILD_DIR}"/compile_commands.json
+
 rm -rf $RESULTDIR/clang-tidy
 mkdir $RESULTDIR/clang-tidy
 

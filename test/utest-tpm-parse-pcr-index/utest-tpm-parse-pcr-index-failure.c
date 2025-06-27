@@ -3,6 +3,7 @@
  * @file utest-tpm-parse-pcr-index-failure.c
  * @brief Implementation of several failure case unit tests for cominitTpmParsePcrIndex().
  */
+#include <cmocka_extensions/cmocka_extensions.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <tss2/tss2_tpm2_types.h>
@@ -17,7 +18,7 @@ void cominitTpmParsePcrIndexTestNonIntegerParamFailure(void **state) {
     char *argvbuffer = {"test\0-pcr\000bla\0"};
     char **av = calloc(3, sizeof(*av));
 
-    assert_non_null(av);
+    assert_non_null_msg(av, "calloc failed");
     av[0] = argvbuffer;
     av[1] = argvbuffer + 5;
     av[2] = argvbuffer + 10;
@@ -36,7 +37,7 @@ void cominitTpmParsePcrIndexTestMixedIntegerParamFailure(void **state) {
     char *argvbuffer = {"test\0-pcr\0003k\0"};
     char **av = calloc(3, sizeof(*av));
 
-    assert_non_null(av);
+    assert_non_null_msg(av, "calloc failed");
     av[0] = argvbuffer;
     av[1] = argvbuffer + 5;
     av[2] = argvbuffer + 10;
@@ -55,7 +56,7 @@ void cominitTpmParsePcrIndexTestNegativeIntegerParamFailure(void **state) {
     char *argvbuffer = {"test\0-pcr\000-2\0"};
     char **av = calloc(3, sizeof(*av));
 
-    assert_non_null(av);
+    assert_non_null_msg(av, "calloc failed");
     av[0] = argvbuffer;
     av[1] = argvbuffer + 5;
     av[2] = argvbuffer + 10;
@@ -83,7 +84,7 @@ void cominitTpmParsePcrIndexTestTooLargeParamFailure(void **state) {
 
     char **av = calloc(3, sizeof(*av));
 
-    assert_non_null(av);
+    assert_non_null_msg(av, "calloc failed");
     av[0] = argvbuffer;
     av[1] = argvbuffer + 5;
     av[2] = argvbuffer + 10;
@@ -111,7 +112,7 @@ void cominitTpmParsePcrIndexTestTooLargeParamOnEdgeFailure(void **state) {
     snprintf(argvbuffer, lengthOfFixedString + pcrCntSize, "test%c-pcr%c%d", '\0', '\0', idx);
     char **av = calloc(3, sizeof(*av));
 
-    assert_non_null(av);
+    assert_non_null_msg(av, "calloc failed");
     av[0] = argvbuffer;
     av[1] = argvbuffer + 5;
     av[2] = argvbuffer + 10;

@@ -43,6 +43,14 @@ Build-Release:
     paths:
       - build/Release
 
+Build-Analyzer:
+  stage: build
+  script:
+    - ci/build.sh --clean Analyzer
+  artifacts:
+    paths:
+      - build/Analyzer
+
 Lint:
   stage: test
   needs:

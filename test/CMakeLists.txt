@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MIT
 find_package(cmocka 1.1.5 REQUIRED)
+find_package(cmocka_extensions REQUIRED)
 
 function(create_unit_test)
   cmake_parse_arguments(PARSED_ARGS "" "NAME" "SOURCES;INCLUDES;LIBRARIES;DEFINITIONS;WRAPS" ${ARGN})
