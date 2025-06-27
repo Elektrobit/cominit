@@ -63,6 +63,9 @@ add_compile_options(
 
 if (CMAKE_BUILD_TYPE STREQUAL "Analyzer")
   add_compile_options(-fanalyzer)
+elseif (CMAKE_BUILD_TYPE STREQUAL "Asan")
+  link_libraries(asan)
+  add_compile_options(-fsanitize=address)
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_compile_options(-O3 -DNDEBUG -g)
 endif()

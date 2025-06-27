@@ -51,6 +51,14 @@ Build-Analyzer:
     paths:
       - build/Analyzer
 
+Build-Asan:
+  stage: build
+  script:
+    - ci/build.sh --clean Asan
+  artifacts:
+    paths:
+      - build/Asan
+
 Lint:
   stage: test
   needs:
@@ -72,3 +80,13 @@ Unit-Tests-Release:
   artifacts:
     paths:
       - build/Release/result
+
+Unit-Tests-Asan:
+  stage: test
+  needs:
+    - Build-Asan
+  script:
+    - ci/run-utests.sh Asan
+  artifacts:
+    paths:
+      - build/Asan/result
