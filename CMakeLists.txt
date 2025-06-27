@@ -61,8 +61,8 @@ add_compile_options(
   -D_FORTIFY_SOURCE=2
 )
 
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Debug")
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  add_compile_options(-O3 -DNDEBUG -g)
 endif()
 
 add_subdirectory(src/)

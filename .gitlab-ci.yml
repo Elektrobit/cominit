@@ -34,30 +34,33 @@ build-docker-image:
       --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
       -f ci/Dockerfile .
 
-Build:
+Build-Release:
   stage: build
   script:
     - env
-    - ci/build.sh
+    - ci/build.sh --clean Release
   artifacts:
     paths:
-      - build/
-      - result/
+      - build/Release
 
 Lint:
   stage: test
+  needs:
+    - Build-Release
   script:
-    - ci/clang-tidy.sh
+    - ci/clang-tidy.sh Release
     - ci/format-code.sh --check
     - ci/lint-commits.sh origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-$CI_DEFAULT_BRANCH}
   artifacts:
     paths:
-      - result/
+      - build/Release/result
 
-Unit Tests:
+Unit-Tests-Release:
   stage: test
+  needs:
+  - Build-Release
   script:
-    - ci/run-utests.sh
+    - ci/run-utests.sh Release
   artifacts:
     paths:
-      - result/
+      - build/Release/result
