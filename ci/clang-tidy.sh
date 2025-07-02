@@ -7,32 +7,44 @@
 #
 CMDPATH=$(cd $(dirname $0) && pwd)
 BASEDIR=${CMDPATH%/*}
-# architecture name amd64, arm64, ...
-ARCH=$(dpkg --print-architecture)
-BUILDDIR=build/"$ARCH"
 
-if [ ! -f "${BUILDDIR}"/compile_commands.json ]; then
-    echo "Build environment not set up. Please run ci/build.sh first!" >&2
+if [ $# -gt 1 ]; then
+    echo "error: only one build-type allowed"
     exit 1
 fi
 
-rm -rf $BASEDIR/result/clang-tidy
-mkdir $BASEDIR/result/clang-tidy
+BUILD_TYPE="${1}"
+if [ $# -eq 0 ]; then
+    BUILD_TYPE="Debug"
+fi
+
+BUILDDIR="${BASEDIR}/build/${BUILD_TYPE}"
+CMAKE_BUILD_DIR="${BUILDDIR}/cmake"
+RESULTDIR="${BUILDDIR}/result/"
+
+if [ ! -f "${CMAKE_BUILD_DIR}"/compile_commands.json ]; then
+    echo "Build environment \"${CMAKE_BUILD_DIR}\" not set up. Please run ci/build.sh first!" >&2
+    exit 1
+fi
+
+rm -rf $RESULTDIR/clang-tidy
+mkdir $RESULTDIR/clang-tidy
+
 cd $BASEDIR
 
-CLANG_TIDY_FLAGS=(-p "${BUILDDIR}" --extra-arg-before='--target=amd64-linux-gnu')
+CLANG_TIDY_FLAGS=(-p "${CMAKE_BUILD_DIR}" --extra-arg-before='--target=amd64-linux-gnu')
 
 # run clang-tidy for cominit
-clang-tidy "${CLANG_TIDY_FLAGS[@]}" -dump-config -header-filter='inc\/*.h' inc/*.h src/*.c "$BUILDDIR"/src/version.c >result/clang-tidy/config
+clang-tidy "${CLANG_TIDY_FLAGS[@]}" -dump-config -header-filter='inc\/*.h' inc/*.h src/*.c "$CMAKE_BUILD_DIR"/src/version.c >$RESULTDIR/clang-tidy/config
 # catch errors even though we use a pipe to tee
 set -o pipefail
-clang-tidy "${CLANG_TIDY_FLAGS[@]}" -header-filter='inc\/*.h' inc/*.h src/*.c "$BUILDDIR"/src/version.c 2>&1 | tee result/clang-tidy/report-cominit
+clang-tidy "${CLANG_TIDY_FLAGS[@]}" -header-filter='inc\/*.h' inc/*.h src/*.c "$CMAKE_BUILD_DIR"/src/version.c 2>&1 | tee $RESULTDIR/clang-tidy/report-cominit
 
 # run clang-tidy for unit tests
 for d in $BASEDIR/test/utest-*/; do
     SUBDIR=$d
-    clang-tidy "${CLANG_TIDY_FLAGS[@]}" -header-filter='inc\/*.h' $SUBDIR/*.c 2>&1 | tee result/clang-tidy/report-$(basename $SUBDIR)
+    clang-tidy "${CLANG_TIDY_FLAGS[@]}" -header-filter='inc\/*.h' $SUBDIR/*.c 2>&1 | tee $RESULTDIR/clang-tidy/report-$(basename $SUBDIR)
 done
 
 # run clang-tidy for mocks
-clang-tidy "${CLANG_TIDY_FLAGS[@]}" -header-filter='inc\/*.h' $BASEDIR/test/mocks/*/*.c 2>&1 | tee result/clang-tidy/report-mocks
+clang-tidy "${CLANG_TIDY_FLAGS[@]}" -header-filter='inc\/*.h' $BASEDIR/test/mocks/*/*.c 2>&1 | tee $RESULTDIR/clang-tidy/report-mocks

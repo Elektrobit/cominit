@@ -73,9 +73,9 @@ endif(UNIT_TESTS)
 
 find_package(Doxygen)
 add_custom_target(
-  doxygen
-  COMMAND doxygen
-  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+  doxygen 
+  COMMAND doxygen ${PROJECT_SOURCE_DIR}/Doxyfile
+  WORKING_DIRECTORY ${DOC_BUILD_DIR}
 )
 
 add_custom_target(
