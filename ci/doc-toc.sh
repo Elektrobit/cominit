@@ -23,6 +23,7 @@ BASEDIR=${CMDPATH%/*}
 ${DOCTOC_CMD} --github "${BASEDIR}/README.md"
 ${DOCTOC_CMD} --github "${BASEDIR}/doc/measured_boot/tpm-library.md"
 ${DOCTOC_CMD} --github "${BASEDIR}/doc/LUKS/LUKS_support.md"
+${DOCTOC_CMD} --github "${BASEDIR}/doc/LUKS/LUKS_keyhandling.md"
 
 # Check if the Update changed anything and report via exit status (useful for
 # the pipeline check). This will be false positive if there are other unstaged
