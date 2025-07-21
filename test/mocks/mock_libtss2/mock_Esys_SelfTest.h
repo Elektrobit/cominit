@@ -16,10 +16,7 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-TSS2_RC __wrap_Esys_SelfTest(ESYS_CONTEXT *esysContext,
-                             ESYS_TR shandle1,
-                             ESYS_TR shandle2,
-                             ESYS_TR shandle3,
+TSS2_RC __wrap_Esys_SelfTest(ESYS_CONTEXT *esysContext, ESYS_TR shandle1, ESYS_TR shandle2, ESYS_TR shandle3,
                              TPMI_YES_NO fullTest);
 
 #endif /* __MOCK_ESYS_SELFTEST_H__ */

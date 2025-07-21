@@ -16,14 +16,8 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-void __wrap_Esys_EvictControl(
-    ESYS_CONTEXT *esysContext,
-    ESYS_TR auth,
-    ESYS_TR objectHandle,
-    ESYS_TR shandle1,
-    ESYS_TR shandle2,
-    ESYS_TR shandle3,
-    TPMI_DH_PERSISTENT persistentHandle,
-    ESYS_TR *newObjectHandle);
+void __wrap_Esys_EvictControl(ESYS_CONTEXT *esysContext, ESYS_TR auth, ESYS_TR objectHandle, ESYS_TR shandle1,
+                              ESYS_TR shandle2, ESYS_TR shandle3, TPMI_DH_PERSISTENT persistentHandle,
+                              ESYS_TR *newObjectHandle);
 
 #endif /* __MOCK_ESYS_EVICTCONTROL_H__ */

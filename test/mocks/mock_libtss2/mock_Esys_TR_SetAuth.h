@@ -16,9 +16,6 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-void __wrap_Esys_TR_SetAuth(
-    ESYS_CONTEXT *esysContext,
-    ESYS_TR handle,
-    TPM2B_AUTH const *authValue);
+void __wrap_Esys_TR_SetAuth(ESYS_CONTEXT *esysContext, ESYS_TR handle, TPM2B_AUTH const *authValue);
 
 #endif /* __MOCK_ESYS_TR_SETAUTH_H__ */

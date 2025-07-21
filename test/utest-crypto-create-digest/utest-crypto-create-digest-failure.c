@@ -7,11 +7,11 @@
 
 #include "common.h"
 #include "crypto.h"
-#include "unit_test.h"
 #include "mbedtls/error.h"
 #include "mbedtls/pk.h"
 #include "mbedtls/sha256.h"
 #include "mbedtls/version.h"
+#include "unit_test.h"
 #include "utest-crypto-create-digest.h"
 
 void cominitCryptoCreateDigestTestDigestNullFailure(void **state) {
@@ -37,4 +37,3 @@ void cominitCryptoCreateDigestTestDigestTooSmallFailure(void **state) {
 
     assert_int_not_equal(cominitCreateSHA256DigestfromKeyfile(keyfile, digest, sizeof(digest)), 0);
 }
-

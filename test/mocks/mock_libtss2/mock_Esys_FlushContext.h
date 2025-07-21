@@ -16,8 +16,6 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-TSS2_RC __wrap_Esys_FlushContext(
-    ESYS_CONTEXT *esysContext,
-    ESYS_TR flushHandle);
+TSS2_RC __wrap_Esys_FlushContext(ESYS_CONTEXT *esysContext, ESYS_TR flushHandle);
 
 #endif /* __MOCK_ESYS_FLUSHCONTEXT_H__ */

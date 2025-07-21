@@ -14,7 +14,7 @@ int __wrap_cominitSetupDmDeviceCrypt(char *device, const char *name, const TPM2B
     check_expected_ptr(device);
     check_expected_ptr(name);
     check_expected_ptr(key);
-    check_expected(offsetSectors); 
+    check_expected(offsetSectors);
 
     return mock_type(int);
 }

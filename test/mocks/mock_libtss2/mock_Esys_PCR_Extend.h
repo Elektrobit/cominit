@@ -16,11 +16,7 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-TSS2_RC __wrap_Esys_PCR_Extend(    ESYS_CONTEXT *esysContext,
-                               ESYS_TR pcrHandle,
-                               ESYS_TR shandle1,
-                               ESYS_TR shandle2,
-                               ESYS_TR shandle3,
-                               const TPML_DIGEST_VALUES *digests);
+TSS2_RC __wrap_Esys_PCR_Extend(ESYS_CONTEXT *esysContext, ESYS_TR pcrHandle, ESYS_TR shandle1, ESYS_TR shandle2,
+                               ESYS_TR shandle3, const TPML_DIGEST_VALUES *digests);
 
 #endif /* __MOCK_ESYS_PCR_EXTEND_H__ */

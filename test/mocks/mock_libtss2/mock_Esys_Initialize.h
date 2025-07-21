@@ -16,8 +16,6 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-TSS2_RC __wrap_Esys_Initialize(ESYS_CONTEXT **esys_context,
-                               TSS2_TCTI_CONTEXT *tcti,
-                               TSS2_ABI_VERSION *abiVersion);
+TSS2_RC __wrap_Esys_Initialize(ESYS_CONTEXT **esys_context, TSS2_TCTI_CONTEXT *tcti, TSS2_ABI_VERSION *abiVersion);
 
 #endif /* __MOCK_ESYS_INITIALIZE_H__ */

@@ -16,13 +16,8 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-TSS2_RC __wrap_Esys_Load(
-    ESYS_CONTEXT *esysContext,
-    ESYS_TR parentHandle,
-    ESYS_TR shandle1,
-    ESYS_TR shandle2,
-    ESYS_TR shandle3,
-    const TPM2B_PRIVATE *inPrivate,
-    const TPM2B_PUBLIC *inPublic, ESYS_TR *objectHandle);
+TSS2_RC __wrap_Esys_Load(ESYS_CONTEXT *esysContext, ESYS_TR parentHandle, ESYS_TR shandle1, ESYS_TR shandle2,
+                         ESYS_TR shandle3, const TPM2B_PRIVATE *inPrivate, const TPM2B_PUBLIC *inPublic,
+                         ESYS_TR *objectHandle);
 
 #endif /* __MOCK_ESYS_LOAD_H__ */

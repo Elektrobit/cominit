@@ -10,9 +10,7 @@
 #include "unit_test.h"
 
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-TSS2_RC __wrap_Esys_FlushContext(
-    ESYS_CONTEXT *esysContext,
-    ESYS_TR flushHandle) {
+TSS2_RC __wrap_Esys_FlushContext(ESYS_CONTEXT *esysContext, ESYS_TR flushHandle) {
     check_expected_ptr(esysContext);
     check_expected(flushHandle);
 

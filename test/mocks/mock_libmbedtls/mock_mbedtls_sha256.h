@@ -15,9 +15,6 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-int __wrap_mbedtls_sha256(const unsigned char *input,
-                              size_t ilen,
-                              unsigned char output[32],
-                              int is224);
+int __wrap_mbedtls_sha256(const unsigned char *input, size_t ilen, unsigned char output[32], int is224);
 
 #endif /* __MOCK_MBEDTLS_SHA256_H__ */

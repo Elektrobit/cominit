@@ -16,12 +16,7 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-void __wrap_Esys_GetRandom(
-    ESYS_CONTEXT *esysContext,
-    ESYS_TR shandle1,
-    ESYS_TR shandle2,
-    ESYS_TR shandle3,
-    UINT16 bytesRequested,
-    TPM2B_DIGEST **randomBytes);
+void __wrap_Esys_GetRandom(ESYS_CONTEXT *esysContext, ESYS_TR shandle1, ESYS_TR shandle2, ESYS_TR shandle3,
+                           UINT16 bytesRequested, TPM2B_DIGEST **randomBytes);
 
 #endif /* __MOCK_ESYS_GETRANDOM_H__ */

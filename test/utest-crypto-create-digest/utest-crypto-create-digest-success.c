@@ -7,11 +7,11 @@
 
 #include "common.h"
 #include "crypto.h"
-#include "unit_test.h"
 #include "mbedtls/error.h"
 #include "mbedtls/pk.h"
 #include "mbedtls/sha256.h"
 #include "mbedtls/version.h"
+#include "unit_test.h"
 #include "utest-crypto-create-digest.h"
 
 static const char cominitPubKey[] =
@@ -29,11 +29,11 @@ int cominitCryptoCreateDigestTestSuccessSetup(void **state) {
     struct testContext *testCtx = NULL;
 
     testCtx = calloc(1, sizeof(struct testContext));
-    if(testCtx != NULL) {
+    if (testCtx != NULL) {
         char template[] = "/tmp/keyfile-XXXXXX";
         testCtx->fd = mkstemp(template);
         testCtx->keyfile = strdup(template);
-        if (write(testCtx->fd, cominitPubKey, strlen(cominitPubKey)) != (ssize_t)strlen(cominitPubKey)){
+        if (write(testCtx->fd, cominitPubKey, strlen(cominitPubKey)) != (ssize_t)strlen(cominitPubKey)) {
             close(testCtx->fd);
             free(testCtx->keyfile);
             free(testCtx);
@@ -51,7 +51,7 @@ int cominitCryptoCreateDigestTestSuccessTeardown(void **state) {
     struct testContext *testCtx = *state;
 
     if (testCtx != NULL) {
-        if(testCtx->keyfile != NULL){
+        if (testCtx->keyfile != NULL) {
             unlink(testCtx->keyfile);
             free(testCtx->keyfile);
         }
