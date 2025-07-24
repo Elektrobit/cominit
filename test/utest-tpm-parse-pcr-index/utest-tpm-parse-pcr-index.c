@@ -15,11 +15,7 @@
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(cominitTpmParsePcrIndexTestSuccess),
-        cmocka_unit_test(cominitTpmParsePcrIndexTestNonIntegerParamFailure),
-        cmocka_unit_test(cominitTpmParsePcrIndexTestMixedIntegerParamFailure),
-        cmocka_unit_test(cominitTpmParsePcrIndexTestNegativeIntegerParamFailure),
-        cmocka_unit_test(cominitTpmParsePcrIndexTestTooLargeParamFailure),
-        cmocka_unit_test(cominitTpmParsePcrIndexTestTooLargeParamOnEdgeFailure),
+        cmocka_unit_test(cominitTpmParsePcrIndexTestFailure),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
