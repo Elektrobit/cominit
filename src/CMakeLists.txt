@@ -19,6 +19,7 @@ add_executable(
   meta.c
   dmctl.c
   output.c
+  securememory.c
   subprocess.c
   ${CMAKE_CURRENT_BINARY_DIR}/version.c
 )

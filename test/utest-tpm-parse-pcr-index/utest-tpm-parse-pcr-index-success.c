@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include "common.h"
+#include "securememory.h"
 #include "tpm.h"
 #include "unit_test.h"
 #include "utest-tpm-parse-pcr-index.h"

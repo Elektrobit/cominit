@@ -17,8 +17,11 @@
 #define COMINIT_TPM_BLOB_LOCATION "sealed.blob"
 
 #define COMINIT_TPM_SECURE_STORAGE_NAME "secureStorage"
+#define COMINIT_TPM_SECURE_STORAGE_KEY_NAME COMINIT_TPM_SECURE_STORAGE_NAME
 #define COMINIT_TPM_SECURE_STORAGE_MNT "/newroot/mnt"
 #define COMINIT_TPM_SECURE_STORAGE_LOCATION "/dev/" DM_DIR "/" COMINIT_TPM_SECURE_STORAGE_NAME
+
+#define POLICY_FAILURE_RC 0x0000099d  ///< return code on policy failure.
 
 /**
  * Structure holding Tpm Context that is acquired during RT.

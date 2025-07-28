@@ -67,10 +67,15 @@ ssize_t cominitKeyringGetKey(uint8_t *key, size_t keyMaxLen, char *keyDesc) {
 }
 int cominitKeyringAddUserKey(const char *keyDesc, const uint8_t *key, size_t keyLen) {
     int result = -1;
-    if (syscall(SYS_add_key, "user", keyDesc, key, keyLen, KEY_SPEC_USER_KEYRING) == -1) {
-        cominitErrnoPrint("Could not add key \'%s\' of size %d Bytes to user keyring.", keyDesc, keyLen);
+
+    if (key == NULL || keyDesc == NULL) {
+        cominitErrPrint("Parameters must not be NULL.");
     } else {
-        result = 0;
+        if (syscall(SYS_add_key, "user", keyDesc, key, keyLen, KEY_SPEC_USER_KEYRING) == -1) {
+            cominitErrnoPrint("Could not add key \'%s\' of size %d Bytes to user keyring.", keyDesc, keyLen);
+        } else {
+            result = 0;
+        }
     }
 
     return result;

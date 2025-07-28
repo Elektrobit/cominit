@@ -16,6 +16,6 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-int __wrap_cominitCryptsetupCreateLuksVolume(char *devCrypt, TPM2B_DIGEST *passphrase);
+int __wrap_cominitCryptsetupCreateLuksVolume(char *devCrypt, uint8_t *passphrase, size_t passphraseSize);
 
 #endif /* __MOCK_COMINIT_CRYPTSETUPCREATELUKSVOLUME_H__ */

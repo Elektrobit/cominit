@@ -1,6 +1,9 @@
 #include "crypto.h"
 
+#include <mbedtls/ctr_drbg.h>
+#include <mbedtls/entropy.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "output.h"
 
@@ -112,6 +115,71 @@ int cominitCreateSHA256DigestfromKeyfile(const char *keyfile, unsigned char *dig
             }
         }
         mbedtls_pk_free(&pkCtx);
+    }
+
+    return result;
+}
+
+/**
+ * Creates an unique string for DRBG (Deterministic Random Bit Generator) seeding.
+ *
+ * Adds uniqueness (context specific salt) to
+ * avoid identical DRBG states across devices with identical entropy sources.
+ *
+ * @param uniqueString  The pointer to receive the unique string.
+ *
+ * @return  0 on success, 1 otherwise
+ */
+static int cominitCryptoCreateUniqueString(unsigned char *uniqueString) {
+    int result = EXIT_FAILURE;
+    char buffer[256] = {0};
+
+    FILE *file = fopen("/proc/sys/kernel/random/boot_id", "r");
+    if (file) {
+        if (fgets(buffer, sizeof(buffer), file)) {
+            size_t n = strcspn(buffer, "\r\n");
+            buffer[n] = '\0';
+            if (mbedtls_sha256_ret((const unsigned char *)buffer, strlen(buffer), uniqueString, 0) == 0) {
+                result = EXIT_SUCCESS;
+            }
+        }
+        fclose(file);
+    }
+
+    return result;
+}
+
+int cominitCryptoCreatePassphrase(unsigned char *passphrase, size_t passphraseSize) {
+    int result = EXIT_FAILURE;
+
+    if (passphrase == NULL || passphraseSize <= 0) {
+        cominitErrPrint("Invalid parameters");
+    } else {
+        mbedtls_entropy_context entropy = {0};
+        mbedtls_ctr_drbg_context ctr = {0};
+
+        mbedtls_entropy_init(&entropy);
+        mbedtls_ctr_drbg_init(&ctr);
+
+        unsigned char uniqueString[SHA256_LEN] = {0};
+        unsigned char *uniqueStringPtr = uniqueString;
+        size_t uniqueStringSize = SHA256_LEN;
+        if (cominitCryptoCreateUniqueString(uniqueStringPtr) == EXIT_FAILURE) {
+            cominitSensitivePrint("Creation of unique string failed");
+            uniqueStringPtr = NULL;
+            uniqueStringSize = 0;
+        }
+
+        int err = mbedtls_ctr_drbg_seed(&ctr, mbedtls_entropy_func, &entropy, uniqueStringPtr, uniqueStringSize);
+        if (err == 0) {
+            err = mbedtls_ctr_drbg_random(&ctr, passphrase, passphraseSize);
+            if (err == 0) {
+                result = EXIT_SUCCESS;
+            }
+        }
+
+        mbedtls_ctr_drbg_free(&ctr);
+        mbedtls_entropy_free(&entropy);
     }
 
     return result;

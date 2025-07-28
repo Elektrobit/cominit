@@ -40,4 +40,6 @@ int cominitCryptoVerifySignature(const uint8_t *data, size_t dataLen, const uint
  */
 int cominitCreateSHA256DigestfromKeyfile(const char *keyfile, unsigned char *digest, size_t digestLen);
 
+int cominitCryptoCreatePassphrase(unsigned char *passphrase, size_t passphraseSize);
+
 #endif /* __CRYPTO_H__ */

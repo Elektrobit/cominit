@@ -7,8 +7,10 @@
 #ifndef __CRYPTSETUP_H__
 #define __CRYPTSETUP_H__
 
-#include <tss2/tss2_common.h>
-#include <tss2/tss2_esys.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#define COMINIT_PASSPHRASE_SIZE 32  ///< The size of the passphrase.
 
 /**
  * Creates a new LUKS2 volume on the target device using the cryptsetup luksFormat subcommand

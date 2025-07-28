@@ -8,9 +8,10 @@
 #include "unit_test.h"
 
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-int __wrap_cominitCryptsetupCreateLuksVolume(char *devCrypt, TPM2B_DIGEST *passphrase) {
-    assert_non_null(devCrypt);
-    assert_non_null(passphrase);
+int __wrap_cominitCryptsetupCreateLuksVolume(char *devCrypt, uint8_t *passphrase, size_t passphraseSize) {
+    check_expected_ptr(passphrase);
+    check_expected_ptr(devCrypt);
+    check_expected(passphraseSize);
 
     return mock_type(int);
 }

@@ -7,6 +7,7 @@
 #include <tss2/tss2_esys.h>
 
 #include "common.h"
+#include "securememory.h"
 #include "tpm.h"
 #include "unit_test.h"
 #include "utest-init-tpm.h"

@@ -19,6 +19,7 @@ create_unit_test(
     utest-tpm-parse-pcr-index-failure.c
     utest-tpm-parse-pcr-index-success.c
     ${PROJECT_SOURCE_DIR}/src/tpm.c
+    ${PROJECT_SOURCE_DIR}/src/securememory.c
     ${PROJECT_SOURCE_DIR}/src/keyring.c
     ${PROJECT_SOURCE_DIR}/src/output.c
   INCLUDES
@@ -53,6 +54,7 @@ create_unit_test(
   -Wl,--wrap=Esys_Clear
   -Wl,--wrap=Esys_TR_SetAuth
   -Wl,--wrap=cominitCreateSHA256DigestfromKeyfile
+  -Wl,--wrap=cominitCryptoCreatePassphrase
   -Wl,--wrap=cominitSetupDmDeviceCrypt
   -Wl,--wrap=cominitCryptsetupCreateLuksVolume
   -Wl,--wrap=cominitCryptsetupOpenLuksVolume

@@ -9,6 +9,7 @@
 #include <tss2/tss2_tpm2_types.h>
 
 #include "common.h"
+#include "securememory.h"
 #include "tpm.h"
 #include "unit_test.h"
 #include "utest-tpm-parse-pcr-index.h"
