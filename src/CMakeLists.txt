@@ -13,11 +13,13 @@ add_executable(
   cominit
   cominit.c
   crypto.c
+  cryptsetup.c
   keyring.c
   minsetup.c
   meta.c
   dmctl.c
   output.c
+  subprocess.c
   ${CMAKE_CURRENT_BINARY_DIR}/version.c
 )
 

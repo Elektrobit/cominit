@@ -1,3 +1,9 @@
+// SPDX-License-Identifier: MIT
+/**
+ * @file tpm.c
+ * @brief Implementation related to TPM handling
+ */
+
 #include "tpm.h"
 
 #include <ctype.h>
@@ -13,9 +19,11 @@
 #include <unistd.h>
 
 #include "crypto.h"
+#include "cryptsetup.h"
 #include "dmctl.h"
 #include "meta.h"
 #include "output.h"
+#include "subprocess.h"
 
 #define POLICY_FAILURE_RC 0x0000099d  ///< return code on policy failure.
 
@@ -402,26 +410,9 @@ static int cominitTpmSeal(ESYS_CONTEXT *ectx, TPM2B_PUBLIC **outPublic, TPM2B_PR
  *
  * */
 static int cominitTpmFormatSecureStorage() {
-    int result = EXIT_FAILURE;
-    pid_t pid = fork();
-    if (pid == 0) {
-        char *argv[] = {"/sbin/mkfs.ext4", "-F", (char *)COMINIT_TPM_SECURE_STORAGE_LOCATION, NULL};
-        char *envp[] = {NULL};
-        execve("/sbin/mkfs.ext4", argv, envp);
-        _exit(1);
-    } else if (pid > 0) {
-        int status;
-        waitpid(pid, &status, 0);
-        if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-            result = EXIT_SUCCESS;
-        } else {
-            cominitErrPrint("mkfs.ext4 failed or was terminated.");
-        }
-    } else {
-        cominitErrPrint("fork failed");
-    }
-
-    return result;
+    char *argv[] = {"/sbin/mkfs.ext4", "-F", (char *)COMINIT_TPM_SECURE_STORAGE_LOCATION, NULL};
+    char *env[] = {NULL};
+    return cominitSubprocessSpawn(argv[0], argv, env);
 }
 
 /**
@@ -435,19 +426,25 @@ static int cominitTpmFormatSecureStorage() {
 static int cominitTpmSetupSecureStorage(cominitCliArgs_t *argCtx, TPM2B_DIGEST *key, bool isFirstBoot) {
     int result = EXIT_FAILURE;
 
-    if (cominitSetupDmDeviceCrypt(argCtx->devNodeCrypt, COMINIT_TPM_SECURE_STORAGE_NAME, key, 0) != 0) {
-        cominitErrPrint("setting up dm-crypt device failed");
-    } else {
-        result = EXIT_SUCCESS;
-        if (isFirstBoot == true) {
-            if (access("/sbin/mkfs.ext4", X_OK) != 0) {
-                cominitErrPrint("mkfs.ext4 not found or not executable");
+    if (isFirstBoot == true) {
+        result = cominitCryptsetupCreateLuksVolume(argCtx->devNodeCrypt, key);
+        if (result != EXIT_SUCCESS) {
+            cominitErrPrint("Could not create LUKS volume");
+        } else {
+            result = cominitCryptsetupOpenLuksVolume(argCtx->devNodeCrypt, key);
+            if (result != EXIT_SUCCESS) {
+                cominitErrPrint("Could not open LUKS volume");
             } else {
                 result = cominitTpmFormatSecureStorage();
                 if (result != EXIT_SUCCESS) {
                     cominitErrPrint("formating secure storage failed");
                 }
             }
+        }
+    } else {
+        result = cominitCryptsetupOpenLuksVolume(argCtx->devNodeCrypt, key);
+        if (result != EXIT_SUCCESS) {
+            cominitErrPrint("Could not open LUKS volume");
         }
     }
 
@@ -835,7 +832,6 @@ cominitTpmState_t cominitTpmProtectData(cominitTpmContext_t *tpmCtx, cominitCliA
             } else {
                 tpmState = cominitTpmSealBlob(tpmCtx->esysCtx, argCtx, keyToSeal);
                 if (tpmState == Sealed) {
-                    cominitTpmDeleteKey(&keyToSeal);
                     tpmState = cominitTpmUnsealBlob(tpmCtx->esysCtx, argCtx, unsealedKey);
                 }
                 if (tpmState == Unsealed) {

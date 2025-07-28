@@ -27,7 +27,9 @@ create_unit_test(
     libmock_dmctl
     libmock_libc
     libmock_crypto
+    libmock_cryptsetup
     libmock_libtss2
+    libmock_subprocess
   WRAPS
     -Wl,--wrap=Tss2_TctiLdr_Initialize
     -Wl,--wrap=Tss2_TctiLdr_Finalize
@@ -51,4 +53,7 @@ create_unit_test(
     -Wl,--wrap=Esys_TR_SetAuth
     -Wl,--wrap=cominitCreateSHA256DigestfromKeyfile
     -Wl,--wrap=cominitSetupDmDeviceCrypt
+    -Wl,--wrap=cominitCryptsetupCreateLuksVolume
+    -Wl,--wrap=cominitCryptsetupOpenLuksVolume
+    -Wl,--wrap=cominitSubprocessSpawn
 )

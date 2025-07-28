@@ -216,18 +216,18 @@ If the flag is set cominit will also look for these arguments in its argument ve
 Details on this feature will be given in the next chapter.
 
 ### Secure Storage
-`Secure Storage` is an encrypted volume that is initialized on the very first boot:
-On initial boot, cominit generates a unique encryption key for the Secure Storage volume.
-This key is sealed by the TPM using a policy based on a specified list of PCR indices (i.e. `cominit.pcrSeal=10,11,12`).
-The TPM will only unseal the key if the PCR values exactly match those recorded at the time of sealing,
+`Secure Storage` is an encrypted LUKS volume that is initialized on the very first boot:
+On initial boot, cominit generates a unique passphrase for the Secure Storage volume.
+This passphrase is sealed by the TPM using a policy based on a specified list of PCR indices (i.e. `cominit.pcrSeal=10,11,12`).
+The TPM will only unseal the passphrase if the PCR values exactly match those recorded at the time of sealing,
 ensuring that the data on the secure storage can only be accessed in a trusted system state.
-On a successful unsealing cominit uses that key to activate the target partition (i.e. `cominit.crypt=/dev/sda6`)
-as a dm-crypt device and currently mounts it to /mnt.
+On a successful unsealing cominit uses that passphrase to open the target partition (i.e. `cominit.crypt=/dev/sda6`)
+as a LUKS volume and currently mounts it to /mnt.
 
 To activate `Secure Storage` and use this feature properly, three things should be taking care of:
 
   1. Kernel config: Must support dm-crypt and the used encryption algorithm.
-  1. Partition table: There must be a partition to store the sealed key to and a partition to be encrypted.
+  1. Partition table: There must be a partition to store the sealed passphrase to and a partition to be encrypted.
   1. Argument vector: Must contain the device nodes and the list of PCR indices.
 
 Currently cominit uses `aes-xts-plain64` for encryption. Therefor a minimal working kernel config is:
@@ -242,12 +242,12 @@ CONFIG_CRYPTO_GF128MUL=y
 CONFIG_CRYPTO_AES_ARM64_NEON_BLK=y
 ```
 
-Currently cominit expects an empty volume for encryption and an ext4 formatted volume for saving the sealed key. 
+Currently cominit expects an empty volume for encryption and an ext4 formatted volume for saving the sealed passphrase.
 If wic is used to define partition layouts, working examples for partition table entries are:
 
 ```
 part tpmblob --fstype=ext4 --label tpmblob --align 1024 --fixed-size 16M
-part secureStorage --align 1024 --fixed-size 16M
+part secureStorage --align 1024 --fixed-size 128M
 ```
 
 The corresponding device nodes should then be passed along with the PCR list to cominit via kernel command line
