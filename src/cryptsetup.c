@@ -8,7 +8,7 @@
 #define COMINIT_CRYPTSETUP_DIR "/usr/sbin/cryptsetup"
 #endif
 
-int cominitCryptsetupCreateLuksVolume(char *devCrypt, TPM2B_DIGEST *passphrase) {
+int cominitCryptsetupCreateLuksVolume(char *devCrypt, uint8_t *passphrase, size_t passphraseLen) {
     char *const argv[] = {(char *)COMINIT_CRYPTSETUP_DIR,
                           "luksFormat",
                           "--batch-mode",
@@ -19,20 +19,37 @@ int cominitCryptsetupCreateLuksVolume(char *devCrypt, TPM2B_DIGEST *passphrase) 
                           "--cipher",
                           "aes-xts-plain64",
                           "--iter-time",
-                          "1",
+                          "10",
                           "--key-file",
                           "-",
                           devCrypt,
                           NULL};
     char *env[] = {NULL};
 
-    return cominitSubprocessSpawnAndWrite(argv[0], argv, env, passphrase->buffer, passphrase->size);
+    return cominitSubprocessSpawnAndWrite(argv[0], argv, env, passphrase, passphraseLen);
 }
 
-int cominitCryptsetupOpenLuksVolume(char *devCrypt, TPM2B_DIGEST *passphrase) {
-    char *const argv[] = {(char *)COMINIT_CRYPTSETUP_DIR,          "luksOpen", "--key-file", "-", devCrypt,
-                          (char *)COMINIT_TPM_SECURE_STORAGE_NAME, NULL};
+int cominitCryptsetupOpenLuksVolume(char *devCrypt) {
+    char *const argv[] = {(char *)COMINIT_CRYPTSETUP_DIR, "luksOpen", devCrypt, (char *)COMINIT_TPM_SECURE_STORAGE_NAME,
+                          NULL};
     char *env[] = {NULL};
 
-    return cominitSubprocessSpawnAndWrite(argv[0], argv, env, passphrase->buffer, passphrase->size);
+    return cominitSubprocessSpawn(argv[0], argv, env);
+}
+
+int cominitCryptsetupAddToken(char *devCrypt) {
+    char *const argv[] = {(char *)COMINIT_CRYPTSETUP_DIR,
+                          "token",
+                          "add",
+                          "--token-type",
+                          "keyring",
+                          "--key-slot",
+                          "0",
+                          "--key-description",
+                          (char *)COMINIT_TPM_SECURE_STORAGE_NAME,
+                          (char *)devCrypt,
+                          NULL};
+    char *env[] = {NULL};
+
+    return cominitSubprocessSpawn(argv[0], argv, env);
 }

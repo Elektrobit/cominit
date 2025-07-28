@@ -20,11 +20,10 @@ function(create_mock_lib)
   )
 endfunction()
 
-create_mock_lib(NAME libmock_cryptsetup
+create_mock_lib(NAME libmock_keyring
     SOURCES
-    mock_cominitCryptsetupCreateLuksVolume.c
-    mock_cominitCryptsetupOpenLuksVolume.c
-    mock_cominitCryptsetupAddToken.c
+    mock_cominitKeyringAddUserKey.c
+    mock_cominitKeyringGetKey.c
     INCLUDES
      ${CMAKE_CURRENT_SOURCE_DIR}
 )

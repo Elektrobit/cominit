@@ -21,6 +21,7 @@
 #include "crypto.h"
 #include "cryptsetup.h"
 #include "dmctl.h"
+#include "keyring.h"
 #include "meta.h"
 #include "output.h"
 #include "subprocess.h"
@@ -254,16 +255,16 @@ static void cominitTpmSelectPcr(cominitCliArgs_t *argCtx, TPML_PCR_SELECTION *pc
  * @param outPublic Address of a TPM2B_PUBLIC pointer that receives the public meta data.
  * @param outPrivate    Address of a TPM2B_PRIVATE pointer that receives the private data.
  * @param argCtx Pointer to the structure that holds the parsed options.
- * @param key Pointer to an TPM2B_DIGEST structure holding a key.
  * @return  0 on success, 1 otherwise
  */
 static int cominitTpmSeal(ESYS_CONTEXT *ectx, TPM2B_PUBLIC **outPublic, TPM2B_PRIVATE **outPrivate,
-                          cominitCliArgs_t *argCtx, TPM2B_DIGEST *key) {
+                          cominitCliArgs_t *argCtx) {
     int result = EXIT_FAILURE;
     TPM2B_DIGEST *policyDigest = NULL;
     ESYS_TR sess;
     ESYS_TR primaryHandle = ESYS_TR_NONE;
     TPM2B_PUBLIC *outPublicPrimary = NULL;
+    TPM2B_DIGEST *keyToSeal = NULL;
 
     TPM2B_CREATION_DATA *creationData = NULL;
     TPM2B_DIGEST *creationHash = NULL;
@@ -374,17 +375,25 @@ static int cominitTpmSeal(ESYS_CONTEXT *ectx, TPM2B_PUBLIC **outPublic, TPM2B_PR
 
                     TPM2B_SENSITIVE_CREATE inSensitive2 = {.size = 0};
 
-                    inSensitive2.sensitive.data.size = key->size;
-                    memcpy(inSensitive2.sensitive.data.buffer, key->buffer, key->size);
-
-                    rc = Esys_Create(ectx, primaryHandle, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE, &inSensitive2,
-                                     &inPublic2, &outsideInfo2, &creationPCR2, outPrivate, outPublic, &creationData2,
-                                     &creationHash2, &creationTicket2);
-
-                    if (rc != TSS2_RC_SUCCESS) {
-                        cominitErrPrint("Creation of blob failed");
+                    result = cominitTpmCreateKey(ectx, &keyToSeal);
+                    if (result != EXIT_SUCCESS) {
+                        cominitErrPrint("Could not generate passphrase.");
                     } else {
-                        result = cominitTpmSavePrimaryHandle(ectx, &primaryHandle);
+                        inSensitive2.sensitive.data.size = keyToSeal->size;
+                        memcpy(inSensitive2.sensitive.data.buffer, keyToSeal->buffer, keyToSeal->size);
+                        cominitTpmDeleteKey(&keyToSeal);
+
+                        rc = Esys_Create(ectx, primaryHandle, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE,
+                                         &inSensitive2, &inPublic2, &outsideInfo2, &creationPCR2, outPrivate, outPublic,
+                                         &creationData2, &creationHash2, &creationTicket2);
+                        /* Overwrite key in memory */
+                        memset(inSensitive2.sensitive.data.buffer, 0, inSensitive2.sensitive.data.size);
+
+                        if (rc != TSS2_RC_SUCCESS) {
+                            cominitErrPrint("Creation of blob failed");
+                        } else {
+                            result = cominitTpmSavePrimaryHandle(ectx, &primaryHandle);
+                        }
                     }
                 }
             }
@@ -419,30 +428,43 @@ static int cominitTpmFormatSecureStorage() {
  * Sets up the secure storage with the unsealed key.
  *
  * @param argCtx Pointer to the structure that holds the parsed options.
- * @param key Pointer to an TPM2B_DIGEST structure holding a key.
  * @param isFirstBoot Flag to indicate whether it is the very first boot.
  * @return  0 on success, 1 otherwise
  */
-static int cominitTpmSetupSecureStorage(cominitCliArgs_t *argCtx, TPM2B_DIGEST *key, bool isFirstBoot) {
+static int cominitTpmSetupSecureStorage(cominitCliArgs_t *argCtx, bool isFirstBoot) {
     int result = EXIT_FAILURE;
+    uint8_t keyBuffer[256] = {0};
 
     if (isFirstBoot == true) {
-        result = cominitCryptsetupCreateLuksVolume(argCtx->devNodeCrypt, key);
-        if (result != EXIT_SUCCESS) {
-            cominitErrPrint("Could not create LUKS volume");
+        ssize_t keyLen = cominitKeyringGetKey(keyBuffer, sizeof(keyBuffer), COMINIT_TPM_SECURE_STORAGE_NAME);
+        cominitSensitivePrint("key length is %d", keyLen);
+        if (keyLen <= 0) {
+            cominitErrPrint("Could not get passphrase from keyring.");
         } else {
-            result = cominitCryptsetupOpenLuksVolume(argCtx->devNodeCrypt, key);
+            result = cominitCryptsetupCreateLuksVolume(argCtx->devNodeCrypt, keyBuffer, keyLen);
+            /* Overwrite key in memory */
+            memset(keyBuffer, 0, sizeof(keyBuffer));
             if (result != EXIT_SUCCESS) {
-                cominitErrPrint("Could not open LUKS volume");
+                cominitErrPrint("Could not create LUKS volume");
             } else {
-                result = cominitTpmFormatSecureStorage();
+                result = cominitCryptsetupAddToken(argCtx->devNodeCrypt);
                 if (result != EXIT_SUCCESS) {
-                    cominitErrPrint("formating secure storage failed");
+                    cominitErrPrint("Could not add LUKS token");
+                } else {
+                    result = cominitCryptsetupOpenLuksVolume(argCtx->devNodeCrypt);
+                    if (result != EXIT_SUCCESS) {
+                        cominitErrPrint("Could not open LUKS volume");
+                    } else {
+                        result = cominitTpmFormatSecureStorage();
+                        if (result != EXIT_SUCCESS) {
+                            cominitErrPrint("formating secure storage failed");
+                        }
+                    }
                 }
             }
         }
     } else {
-        result = cominitCryptsetupOpenLuksVolume(argCtx->devNodeCrypt, key);
+        result = cominitCryptsetupOpenLuksVolume(argCtx->devNodeCrypt);
         if (result != EXIT_SUCCESS) {
             cominitErrPrint("Could not open LUKS volume");
         }
@@ -456,16 +478,15 @@ static int cominitTpmSetupSecureStorage(cominitCliArgs_t *argCtx, TPM2B_DIGEST *
  *
  * @param ectx  The Pointer to the initialized ESYS_CONTEXT handle.
  * @param argCtx Pointer to the structure that holds the parsed options.
- * @param key Pointer to an TPM2B_DIGEST structure holding a key.
  * @return  Sealed=3 on success, TpmFailure=0 otherwise
  */
-static cominitTpmState_t cominitTpmSealBlob(ESYS_CONTEXT *ectx, cominitCliArgs_t *argCtx, TPM2B_DIGEST *key) {
+static cominitTpmState_t cominitTpmSealBlob(ESYS_CONTEXT *ectx, cominitCliArgs_t *argCtx) {
     TPM2B_PUBLIC *outPublic = NULL;
     TPM2B_PRIVATE *outPrivate = NULL;
     cominitTpmState_t state = TpmFailure;
     int result = EXIT_FAILURE;
 
-    result = cominitTpmSeal(ectx, &outPublic, &outPrivate, argCtx, key);
+    result = cominitTpmSeal(ectx, &outPublic, &outPrivate, argCtx);
     if (result != EXIT_SUCCESS) {
         cominitErrPrint("Could not seal the data.");
     } else {
@@ -553,11 +574,10 @@ static int cominitTpmLoadBlob(TPM2B_PUBLIC *outPublic, TPM2B_PRIVATE *outPrivate
  * @param outPublic The Pointer to the structure that holds the public meta data.
  * @param outPrivate    The Pointer to the structure that holds the private data.
  * @param argCtx Pointer to the structure that holds the parsed options.
- * @param key Pointer to a TPM2B_DIGEST structure receiving a key.
  * @return  Unsealed=2 on success, TpmPolicyFailure=1 or TpmFailure=0 otherwise
  */
 static cominitTpmState_t cominitTpmUnseal(ESYS_CONTEXT *ectx, ESYS_TR *primaryHandle, TPM2B_PUBLIC *outPublic,
-                                          TPM2B_PRIVATE *outPrivate, cominitCliArgs_t *argCtx, TPM2B_DIGEST *key) {
+                                          TPM2B_PRIVATE *outPrivate, cominitCliArgs_t *argCtx) {
     ESYS_TR blobHandle = ESYS_TR_NONE;
     ESYS_TR sess = ESYS_TR_NONE;
     cominitTpmState_t state = TpmFailure;
@@ -592,9 +612,12 @@ static cominitTpmState_t cominitTpmUnseal(ESYS_CONTEXT *ectx, ESYS_TR *primaryHa
                         cominitErrPrint("Unsealing failed");
                     }
                 } else {
-                    memcpy(key, outData->buffer, outData->size);
-                    key->size = outData->size;
-                    state = Unsealed;
+                    if (cominitKeyringAddUserKey(COMINIT_TPM_SECURE_STORAGE_NAME, outData->buffer, outData->size) ==
+                        0) {
+                        state = Unsealed;
+                    }
+                    /* Overwrite key in memory */
+                    memset(outData->buffer, 0, outData->size);
                 }
             }
         }
@@ -611,10 +634,9 @@ static cominitTpmState_t cominitTpmUnseal(ESYS_CONTEXT *ectx, ESYS_TR *primaryHa
  *
  * @param ectx  The Pointer to the initialized ESYS_CONTEXT handle.
  * @param argCtx Pointer to the structure that holds the parsed options.
- * @param key Pointer to a TPM2B_DIGEST structure receiving a key.
  * @return  Unsealed=2 on success, TpmPolicyFailure=1 or TpmFailure=0 otherwise
  */
-static cominitTpmState_t cominitTpmUnsealBlob(ESYS_CONTEXT *ectx, cominitCliArgs_t *argCtx, TPM2B_DIGEST *key) {
+static cominitTpmState_t cominitTpmUnsealBlob(ESYS_CONTEXT *ectx, cominitCliArgs_t *argCtx) {
     TPM2B_PUBLIC outPublic = {0};
     TPM2B_PRIVATE outPrivate = {0};
     ESYS_TR primaryHandle = ESYS_TR_NONE;
@@ -630,7 +652,7 @@ static cominitTpmState_t cominitTpmUnsealBlob(ESYS_CONTEXT *ectx, cominitCliArgs
         if (result != EXIT_SUCCESS) {
             cominitErrPrint("Could not retrieve blob.");
         } else {
-            tpmState = cominitTpmUnseal(ectx, &primaryHandle, &outPublic, &outPrivate, argCtx, key);
+            tpmState = cominitTpmUnseal(ectx, &primaryHandle, &outPublic, &outPrivate, argCtx);
         }
     }
 
@@ -818,35 +840,28 @@ bool cominitTpmExtendEnabled(cominitCliArgs_t *argCtx) {
 cominitTpmState_t cominitTpmProtectData(cominitTpmContext_t *tpmCtx, cominitCliArgs_t *argCtx) {
     cominitBlobState_t blobState = BlobNotFound;
     cominitTpmState_t tpmState = TpmFailure;
-    TPM2B_DIGEST *keyToSeal = NULL;
-    TPM2B_DIGEST *unsealedKey = calloc(1, sizeof(TPM2B_DIGEST));
 
     blobState = cominitTpmSetupBlob(argCtx);
 
     switch (blobState) {
         case BlobIsEmpty:
             cominitInfoPrint("Blob is empty: sealing");
-            int result = cominitTpmCreateKey(tpmCtx->esysCtx, &keyToSeal);
-            if (result != EXIT_SUCCESS) {
-                cominitErrPrint("Could not generate key.");
-            } else {
-                tpmState = cominitTpmSealBlob(tpmCtx->esysCtx, argCtx, keyToSeal);
-                if (tpmState == Sealed) {
-                    tpmState = cominitTpmUnsealBlob(tpmCtx->esysCtx, argCtx, unsealedKey);
-                }
-                if (tpmState == Unsealed) {
-                    if (cominitTpmSetupSecureStorage(argCtx, unsealedKey, true) != EXIT_SUCCESS) {
-                        cominitErrPrint("Secure storage could not be set up.");
-                        tpmState = TpmFailure;
-                    }
+            tpmState = cominitTpmSealBlob(tpmCtx->esysCtx, argCtx);
+            if (tpmState == Sealed) {
+                tpmState = cominitTpmUnsealBlob(tpmCtx->esysCtx, argCtx);
+            }
+            if (tpmState == Unsealed) {
+                if (cominitTpmSetupSecureStorage(argCtx, true) != EXIT_SUCCESS) {
+                    cominitErrPrint("Secure storage could not be set up.");
+                    tpmState = TpmFailure;
                 }
             }
             break;
         case BlobExists:
             cominitInfoPrint("Blob exists: unsealing");
-            tpmState = cominitTpmUnsealBlob(tpmCtx->esysCtx, argCtx, unsealedKey);
+            tpmState = cominitTpmUnsealBlob(tpmCtx->esysCtx, argCtx);
             if (tpmState == Unsealed) {
-                if (cominitTpmSetupSecureStorage(argCtx, unsealedKey, false) != EXIT_SUCCESS) {
+                if (cominitTpmSetupSecureStorage(argCtx, false) != EXIT_SUCCESS) {
                     cominitErrPrint("Secure storage could not be set up.");
                     tpmState = TpmFailure;
                 }
@@ -858,9 +873,6 @@ cominitTpmState_t cominitTpmProtectData(cominitTpmContext_t *tpmCtx, cominitCliA
             tpmState = TpmFailure;
             break;
     }
-
-    cominitTpmDeleteKey(&keyToSeal);
-    cominitTpmDeleteKey(&unsealedKey);
 
     cominitTpmUnmountBlob(argCtx->devNodeBlob);
 

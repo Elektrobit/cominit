@@ -6,9 +6,6 @@
 #ifndef __MOCK_COMINIT_CRYPTSETUPOPENLUKSVOLUME_H__
 #define __MOCK_COMINIT_CRYPTSETUPOPENLUKSVOLUME_H__
 
-#include <tss2/tss2_common.h>
-#include <tss2/tss2_esys.h>
-
 /**
  * Mock function for cominitCryptsetupOpenLuksVolume().
  *
@@ -16,6 +13,6 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-int __wrap_cominitCryptsetupOpenLuksVolume(char *devCrypt, TPM2B_DIGEST *key);
+int __wrap_cominitCryptsetupOpenLuksVolume(char *devCrypt);
 
 #endif /* __MOCK_COMINIT_CRYPTSETUPOPENLUKSVOLUME_H__ */

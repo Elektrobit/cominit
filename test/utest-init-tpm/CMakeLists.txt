@@ -19,6 +19,7 @@ create_unit_test(
     utest-init-tpm-failure.c
     utest-init-tpm-success.c
     ${PROJECT_SOURCE_DIR}/src/tpm.c
+    ${PROJECT_SOURCE_DIR}/src/keyring.c
     ${PROJECT_SOURCE_DIR}/src/output.c
   INCLUDES
     ${TSS2_ESYS_INCLUDE_DIRS}
@@ -56,5 +57,7 @@ create_unit_test(
     -Wl,--wrap=cominitSetupDmDeviceCrypt
     -Wl,--wrap=cominitCryptsetupCreateLuksVolume
     -Wl,--wrap=cominitCryptsetupOpenLuksVolume
+    -Wl,--wrap=cominitCryptsetupAddToken
+    -Wl,--wrap=cominitCryptsetupKillTemporarySlot
     -Wl,--wrap=cominitSubprocessSpawn
 )

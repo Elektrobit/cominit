@@ -43,7 +43,7 @@
 #define cominitKeyctlSearch(keyringID, keyType, keyDesc) \
     syscall(SYS_keyctl, KEYCTL_SEARCH, keyringID, keyType, keyDesc, 0)
 
-ssize_t cominitGetKey(uint8_t *key, size_t keyMaxLen, char *keyDesc) {
+ssize_t cominitKeyringGetKey(uint8_t *key, size_t keyMaxLen, char *keyDesc) {
     if (key == NULL || keyDesc == NULL) {
         cominitErrPrint("Parameters must not be NULL.");
         return -1;
@@ -65,9 +65,19 @@ ssize_t cominitGetKey(uint8_t *key, size_t keyMaxLen, char *keyDesc) {
     }
     return len;
 }
+int cominitKeyringAddUserKey(const char *keyDesc, const uint8_t *key, size_t keyLen) {
+    int result = -1;
+    if (syscall(SYS_add_key, "user", keyDesc, key, keyLen, KEY_SPEC_USER_KEYRING) == -1) {
+        cominitErrnoPrint("Could not add key \'%s\' of size %d Bytes to user keyring.", keyDesc, keyLen);
+    } else {
+        result = 0;
+    }
+
+    return result;
+}
 
 #ifdef COMINIT_FAKE_HSM
-int cominitInitFakeHsm(void) {
+int cominitKeyringInitFakeHsm(void) {
     char *runner, *strtokState;
     char keyDescs[sizeof(COMINIT_FAKE_HSM_KEY_DESCS)];
     char keyPath[PATH_MAX];
@@ -100,9 +110,7 @@ int cominitInitFakeHsm(void) {
             return -1;
         }
 
-        if (syscall(SYS_add_key, "user", runner, keyPld, keyfileInfo.st_size, KEY_SPEC_USER_KEYRING) == -1) {
-            cominitErrnoPrint("Could not add key \'%s\' of size %d Bytes to user keyring.", runner,
-                              keyfileInfo.st_size);
+        if (cominitKeyringAddUserKey(runner, keyPld, keyfileInfo.st_size) == -1) {
             return -1;
         }
 

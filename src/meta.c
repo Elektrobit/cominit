@@ -419,7 +419,7 @@ static inline int cominitGenIntegrityDmTbl(cominitRfsMetaData_t *meta, char *dmM
             keyDesc += 2;
 
             cominitInfoPrint("Dm-integrity will use key \'%s\' from Kernel keyring.", keyDesc);
-            ssize_t keyLen = cominitGetKey(keyBytes, COMINIT_KEYRING_PAYLOAD_MAX_SIZE, keyDesc);
+            ssize_t keyLen = cominitKeyringGetKey(keyBytes, COMINIT_KEYRING_PAYLOAD_MAX_SIZE, keyDesc);
             if (keyLen < 1) {
                 cominitErrPrint("Could not get key payload for key \'%s\'.", keyDesc);
                 return -1;

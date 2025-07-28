@@ -189,7 +189,7 @@ int main(int argc, char *argv[], char *envp[]) {
 /* In case we are built to emulate a HSM, enroll the standard development key for dm-integrity HMAC in the Kernel
  * user keyring. */
 #ifdef COMINIT_FAKE_HSM
-    if (cominitInitFakeHsm() == -1) {
+    if (cominitKeyringInitFakeHsm() == -1) {
         cominitErrPrint(
             "Could not enroll development key in user keyring. Will continue but dm-integrity with HMAC may fail if "
             "used.");
