@@ -44,7 +44,7 @@ set -o pipefail
 clang-tidy "${CLANG_TIDY_FLAGS[@]}" -header-filter='inc\/*.h' inc/*.h src/*.c "$CMAKE_BUILD_DIR"/src/version.c 2>&1 | tee $RESULTDIR/clang-tidy/report-cominit
 
 # run clang-tidy for unit tests
-for d in $BASEDIR/test/utest-*/; do
+for d in $BASEDIR/test/utest/*/utest-*/; do
     SUBDIR=$d
     clang-tidy "${CLANG_TIDY_FLAGS[@]}" -header-filter='inc\/*.h' $SUBDIR/*.c 2>&1 | tee $RESULTDIR/clang-tidy/report-$(basename $SUBDIR)
 done
