@@ -11,5 +11,5 @@
 
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
 void __wrap_Esys_Free(void *__ptr) {
-    assert_non_null(__ptr);
+    check_expected_ptr(__ptr);
 }
