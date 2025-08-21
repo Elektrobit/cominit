@@ -16,6 +16,7 @@ RUN apt-get update \
  doxygen \
  equivs \
  fakeroot \
+ gcovr \
  git \
  git-buildpackage \
  graphviz \

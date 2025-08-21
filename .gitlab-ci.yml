@@ -67,6 +67,15 @@ Build-Ubsan:
     paths:
       - build/Ubsan
 
+Build-Coverage:
+  stage: build
+  script:
+    - env
+    - ci/build.sh Coverage
+  artifacts:
+    paths:
+      - build/Coverage
+
 Lint:
   stage: test
   needs:
@@ -108,3 +117,28 @@ Unit-Tests-Ubsan:
   artifacts:
     paths:
       - build/Ubsan/result
+
+Unit-Tests-Coverage:
+  stage: test
+  needs:
+    - Build-Coverage
+  script:
+    - ci/run-utests.sh Coverage
+  artifacts:
+    when: always
+    paths:
+      - build/Coverage/result
+      - build/Coverage/**/*.gcda
+      - build/Coverage/**/*.gcno
+
+code-coverage:
+  stage: test
+  needs:
+    - Build-Coverage
+    - Unit-Tests-Coverage
+  script:
+      - ci/create_coverage.sh gcov
+  artifacts:
+    when: always
+    paths:
+      - build/Coverage/result/coverage
