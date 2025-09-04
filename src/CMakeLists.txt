@@ -11,6 +11,7 @@ endif()
 
 add_executable(
   cominit
+  automount.c
   cominit.c
   crypto.c
   cryptsetup.c

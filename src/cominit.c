@@ -21,6 +21,7 @@
 #ifdef COMINIT_USE_TPM
 #include "tpm.h"
 #endif
+#include "automount.h"
 #include "common.h"
 #include "minsetup.h"
 #include "output.h"
@@ -105,6 +106,16 @@ static int cominitParseDeviceNode(char *device, const char *argValue);
  * @return  Pointer to the value of the argument if one parameter is found, NULL otherwise
  */
 static const char *cominitParseArgValue(const char *arg, const char *param1, const char *param2);
+/**
+ * Tries to discover a valid rootfs either from kernel cmdline or
+ * by finding a rootfs GUID in GPT and the corresponding partition.
+ *
+ * @param argCtx        Pointer to the structure that holds the parsed options.
+ * @param rfsMeta       Pointer to the structure that receives the rootfs partition.
+ * @param gptDiskRoot   The pointer to a cominitGPTDisk_t struct that receives the disk information.
+ * @return  true on success, false otherwise
+ */
+bool cominitDiscoverRootfs(cominitCliArgs_t *argCtx, cominitRfsMetaData_t *rfsMeta, cominitGPTDisk_t *gptDiskRoot);
 
 /**
  * Compact Init main function.
@@ -196,26 +207,19 @@ int main(int argc, char *argv[], char *envp[]) {
     }
 #endif
 
-    cominitRfsMetaData_t rfsMeta;
+    cominitRfsMetaData_t rfsMeta = {0};
+    cominitGPTDisk_t gptDiskRoot = {0};
 
-    if (argCtx.devNodeRootFs[0] != '\0') {
-        struct stat statbuf;
-        unsigned long failCount = 0;
-        memcpy(rfsMeta.devicePath, argCtx.devNodeRootFs, sizeof(rfsMeta.devicePath));
-        while (stat(argCtx.devNodeRootFs, &statbuf) == -1) {
-            if ((errno == ENOENT || errno == EACCES) && failCount < COMINIT_ROOT_WAIT_TRIES) {
-                cominitInfoPrint("Rootfs at '%s' not yet available or accessible, trying again in %lums.",
-                                 rfsMeta.devicePath, COMINIT_ROOT_WAIT_INTERVAL_MILLIS);
-                failCount++;
-                cominitMicroSleep((unsigned long long)COMINIT_ROOT_WAIT_INTERVAL_MILLIS * 1000uLL);
-            } else {
-                cominitErrnoPrint("Could not stat given rootfs location (\'%s\').", rfsMeta.devicePath);
-                goto rescue;
-            }
+    unsigned long failCount = 0;
+    while (cominitDiscoverRootfs(&argCtx, &rfsMeta, &gptDiskRoot) == false) {
+        if (failCount < COMINIT_ROOT_WAIT_TRIES) {
+            failCount++;
+            cominitInfoPrint("No valid rootfs yet found, trying again in %lums.", COMINIT_ROOT_WAIT_INTERVAL_MILLIS);
+            cominitMicroSleep((unsigned long long)COMINIT_ROOT_WAIT_INTERVAL_MILLIS * 1000uLL);
+        } else {
+            cominitErrPrint("No valid rootfs found.");
+            goto rescue;
         }
-    } else {
-        cominitErrPrint("No valid rootfs partition provided by the bootloader.");
-        goto rescue;
     }
 
     cominitInfoPrint("Looking for rootfs metadata on partition \'%s\'.", rfsMeta.devicePath);
@@ -231,6 +235,22 @@ int main(int argc, char *argv[], char *envp[]) {
     }
 
 #ifdef COMINIT_USE_TPM
+    if (argCtx.devNodeCrypt[0] == '\0') {
+        cominitInfoPrint("No secureStorage partition given from kernel command line.");
+        if (gptDiskRoot.diskName[0] != '\0') {
+            if (cominitAutomountFindPartitionOnDisk(&gptDiskRoot, (const char *)COMINIT_SECURE_STORAGE_GUID_TYPE,
+                                                    argCtx.devNodeCrypt, sizeof(argCtx.devNodeCrypt)) == EXIT_FAILURE) {
+                cominitErrPrint("Could not find secureStorage partition from guid type.");
+            }
+        } else {
+            cominitGPTDisk_t gptDiskNotRoot = {0};
+            if (cominitAutomountFindPartition(&gptDiskNotRoot, (const char *)COMINIT_SECURE_STORAGE_GUID_TYPE,
+                                              argCtx.devNodeCrypt, sizeof(argCtx.devNodeCrypt)) == EXIT_FAILURE) {
+                cominitErrPrint("Could not find secureStorage partition from guid type.");
+            }
+        }
+    }
+
     if (cominitUseTpm(&argCtx) == true) {
         cominitTpmContext_t tpmCtx;
 
@@ -400,4 +420,36 @@ static const char *cominitParseArgValue(const char *arg, const char *key1, const
     }
 
     return value;
+}
+
+bool cominitDiscoverRootfs(cominitCliArgs_t *argCtx, cominitRfsMetaData_t *rfsMeta, cominitGPTDisk_t *gptDiskRoot) {
+    bool rootFound = false;
+    static bool printedOnce = false;
+
+    if (argCtx == NULL || rfsMeta == NULL || gptDiskRoot == NULL) {
+        cominitErrPrint("Invalid parameters");
+    } else {
+        if (argCtx->devNodeRootFs[0] != '\0') {
+            if (!printedOnce) {
+                cominitInfoPrint("Rootfs partition %s given from kernel cmdline.", argCtx->devNodeRootFs);
+                printedOnce = true;
+            }
+            struct stat statbuf = {0};
+            if (stat(argCtx->devNodeRootFs, &statbuf) == 0) {
+                memcpy(rfsMeta->devicePath, argCtx->devNodeRootFs, sizeof(rfsMeta->devicePath));
+                rootFound = true;
+            }
+        } else {
+            if (!printedOnce) {
+                cominitInfoPrint("No rootfs from kernel cmdline; scanning GPT for rootfs GUID");
+                printedOnce = true;
+            }
+            if (cominitAutomountFindPartition(gptDiskRoot, (const char *)COMINIT_ROOTFS_GUID_TYPE, rfsMeta->devicePath,
+                                              sizeof(rfsMeta->devicePath)) == EXIT_SUCCESS) {
+                rootFound = true;
+            }
+        }
+    }
+
+    return rootFound;
 }

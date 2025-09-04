@@ -18,6 +18,7 @@
   - [TPM Usage](#tpm-usage)
   - [Secure Storage](#secure-storage)
   - [log level](#log-level)
+  - [Automount](#automount)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -84,7 +85,9 @@ rdinit=/path/to/cominit [OTHER_KERNEL_PARAMETERS] -- [COMINIT_ARGV1] [COMINIT_AR
 ```
 
 `cominit` currently looks for an argument `root` or `cominit.rootfs` in its argument vector for the location of
-the rootfs. `cominit` will mount and switch into the value of this argument (e.g. `root=/dev/sdxy`).  
+the rootfs. `cominit` will mount and switch into the value of this argument (e.g. `root=/dev/sdxy`).
+If no valid argument provided `cominit` can detect the rootfs partition from it's GUID if GPT is used.
+See [Automount](#automount) for more information.
 All other settings concerning the rootfs are read from the partition's metadata.
 
 If the rootfs is not immediately available or accessible, cominit will wait a pre-set interval and try again for a
@@ -252,6 +255,8 @@ part secureStorage --align 1024 --fixed-size 128M
 
 The corresponding device nodes should then be passed along with the PCR list to cominit via kernel command line
 (i.e `cominit.blob=/dev/sda5` , `cominit.crypt=/dev/sda6` and `cominit.pcrSeal=10,11,12`).
+If no valid argument provided `cominit` can detect the secure storage partition from it's GUID if GPT is used.
+See [Automount](#automount) for more information.
 
 ### log level
 
@@ -270,3 +275,26 @@ Available levels are
 Sensitive outputs are additionally guarded and can be activated by compiling with -DENABLE_SENSITIVE_LOGGING=On flag
 and then setting the log level to SENSITIVE ("logLevel=5" or "cominit.logLevel=5"). The default log level
 is INFO ("logLevel=3" or "cominit.logLevel=3"). The default will be applied if no or an invalid log level is given.
+
+### Automount
+
+When a disk is partitioned with a GUID Partition Table (GPT), each partition
+entry contains a **type GUID** and a **unique partition GUID**.
+See [discoverable_partitions_specification](https://uapi-group.org/specifications/specs/discoverable_partitions_specification/)
+for more information.
+This allows the system to identify partitions not only by their device node
+(e.g. `/dev/sda6`), but also by these stable identifiers stored in the table
+itself.
+
+The automount logic uses a predefined partition type GUID to detect and select the correct device for mounting. It searches for the first partition matching this GUID and mounts it. This approach makes the setup more robust against changes in device enumeration order or disk layout, since the GUID remains constant even if device names such as /dev/sda or /dev/mmcblk0 change. However, it requires that exactly one partition with the given GUID is present; otherwise, the behavior is undefined.
+
+Currently detection for rootfs and secure storage are implemented:
+```
+GUID of the rootfs: b921b045-1df0-41c3-af44-4c6f280d3fae
+GUID of the secure storage: CA7D7CCB-63ED-4C53-861C-1742536059CC
+```
+If wic is used to define partition layouts, working examples for partition table entries are:
+bootloader --ptable gpt
+part rootfsA --fstype=ext4 --align 1024 --fixed-size 512M --part-type=b921b045-1df0-41c3-af44-4c6f280d3fae --use-uuid
+part secureStorage --align 1024 --fixed-size 128M --part-type=CA7D7CCB-63ED-4C53-861C-1742536059CC --use-uuid
+
