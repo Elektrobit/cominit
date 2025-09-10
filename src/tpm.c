@@ -52,7 +52,7 @@ static int cominitTpmLoadDriver() {
  *
  * @param tpmCtx   The TPM context.
  *
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitTpmSelftest(cominitTpmContext_t *tpmCtx) {
     int result = EXIT_FAILURE;
@@ -72,7 +72,7 @@ static int cominitTpmSelftest(cominitTpmContext_t *tpmCtx) {
  * @param dirPath   The fullpath to the directory that should be created.
  * @param mode   The mode of the new directory.
  *
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitMkdir(const char *dirPath, mode_t mode) {
     int result = EXIT_FAILURE;
@@ -154,7 +154,7 @@ static cominitBlobState_t cominitTpmSetupBlob(cominitCliArgs_t *argCtx) {
  *
  * @param outPublic     The Pointer to the structure that holds the public meta data.
  * @param outPrivate    The Pointer to the structure that holds the private data.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitTpmSaveBlob(TPM2B_PUBLIC *outPublic, TPM2B_PRIVATE *outPrivate) {
     int result = EXIT_FAILURE;
@@ -179,7 +179,7 @@ static int cominitTpmSaveBlob(TPM2B_PUBLIC *outPublic, TPM2B_PRIVATE *outPrivate
  *
  * @param ectx The Pointer to the initialized ESYS_CONTEXT handle.
  * @param primaryHandle Pointer to an ESYS_TR holding a transient primary key handle.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitTpmSavePrimaryHandle(ESYS_CONTEXT *ectx, ESYS_TR *primaryHandle) {
     int result = EXIT_FAILURE;
@@ -220,7 +220,7 @@ static void cominitTpmSelectPcr(cominitCliArgs_t *argCtx, TPML_PCR_SELECTION *pc
  * @param outPublic Address of a TPM2B_PUBLIC pointer that receives the public meta data.
  * @param outPrivate    Address of a TPM2B_PRIVATE pointer that receives the private data.
  * @param argCtx Pointer to the structure that holds the parsed options.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitTpmSeal(ESYS_CONTEXT *ectx, TPM2B_PUBLIC **outPublic, TPM2B_PRIVATE **outPrivate,
                           cominitCliArgs_t *argCtx) {
@@ -337,7 +337,7 @@ static int cominitTpmFormatSecureStorage() {
  *
  * @param argCtx Pointer to the structure that holds the parsed options.
  * @param isFirstBoot Flag to indicate whether it is the very first boot.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitTpmSetupSecureStorage(cominitCliArgs_t *argCtx, bool isFirstBoot) {
     int result = EXIT_FAILURE;
@@ -421,7 +421,7 @@ static void cominitTpmUnmountBlob() {
  *
  * @param ectx  The Pointer to the initialized ESYS_CONTEXT handle.
  * @param primaryHandle Pointer to a ESYS_TR structure that receives the primary key handle.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitTpmLoadPrimaryHandle(ESYS_CONTEXT *ectx, ESYS_TR *primaryHandle) {
     int result = EXIT_FAILURE;
@@ -443,7 +443,7 @@ static int cominitTpmLoadPrimaryHandle(ESYS_CONTEXT *ectx, ESYS_TR *primaryHandl
  *
  * @param outPublic The Pointer to the structure that receives the public meta data.
  * @param outPrivate    The Pointer to the structure that receives the private data.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitTpmLoadBlob(TPM2B_PUBLIC *outPublic, TPM2B_PRIVATE *outPrivate) {
     int result = EXIT_FAILURE;

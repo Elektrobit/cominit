@@ -19,7 +19,7 @@
  * @param data      Pointer to the buffer containing data to write to the child’s stdin.
  * @param dataSize   Number of bytes from @p data to write into stdin.
  *
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitSubprocessSpawnAndWrite(const char *path, char *const argv[], char *const env[], const void *data,
                                    size_t dataSize);
@@ -32,7 +32,7 @@ int cominitSubprocessSpawnAndWrite(const char *path, char *const argv[], char *c
  *              the program name and the last element must be NULL.
  * @param env   The environment for the new process. This must be a NULL‑terminated.
  *
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitSubprocessSpawn(const char *path, char *const argv[], char *const env[]);
 

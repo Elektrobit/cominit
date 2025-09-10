@@ -21,7 +21,7 @@
  *
  * @param devCrypt The target device.
  *
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitSecurememoryCreateLuksVolume(char *devCrypt);
 

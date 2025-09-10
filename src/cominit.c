@@ -94,7 +94,7 @@ static inline bool cominitUseTpm(cominitCliArgs_t *ctx);
  *
  * @param device    Pointer to the structure that the device node is copied to.
  * @param argValue  The parsed value of the argument found in the provided argument vector.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitParseDeviceNode(char *device, const char *argValue);
 /**

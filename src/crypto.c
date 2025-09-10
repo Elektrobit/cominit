@@ -128,7 +128,7 @@ int cominitCreateSHA256DigestfromKeyfile(const char *keyfile, unsigned char *dig
  *
  * @param uniqueString  The pointer to receive the unique string.
  *
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitCryptoCreateUniqueString(unsigned char *uniqueString) {
     int result = EXIT_FAILURE;

@@ -53,7 +53,7 @@ void cominitOutputSetVisibleLogLevel(cominitLogLevelE_t cominitLogLevel);
  *
  * @param logLevel  Pointer to the structure that receives the parsed log level.
  * @param argValue  The parsed value of the argument found in the provided argument vector.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitOutputParseLogLevel(cominitLogLevelE_t *logLevel, const char *argValue);
 

@@ -45,7 +45,7 @@ typedef enum {
  * Mounts the dm crypt device to the new root.
  * Mount point is defined in #COMINIT_TPM_SECURE_STORAGE_MNT.
  *
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitTpmMountSecureStorage();
 
@@ -55,7 +55,7 @@ int cominitTpmMountSecureStorage();
  * Dummy implementation.
  *
  * @param tpmCtx   Pointer to the structure that holds the acquired TPM context.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitTpmHandlePolicyFailure(cominitTpmContext_t *tpmCtx);
 
@@ -80,7 +80,7 @@ cominitTpmState_t cominitTpmProtectData(cominitTpmContext_t *tpmCtx, cominitCliA
  *
  * @param argCtx   Pointer to the structure that receives the parsed options.
  * @param argValue  The parsed value of the argument found in the provided argument vector.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitTpmParsePcrIndex(cominitCliArgs_t *argCtx, const char *argValue);
 
@@ -91,7 +91,7 @@ int cominitTpmParsePcrIndex(cominitCliArgs_t *argCtx, const char *argValue);
  *
  * @param argCtx   Pointer to the structure that holds the parsed options.
  * @param argValue  The parsed value of the argument found in the provided argument vector.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitTpmParsePcrIndexes(cominitCliArgs_t *argCtx, const char *argValue);
 
@@ -100,7 +100,7 @@ int cominitTpmParsePcrIndexes(cominitCliArgs_t *argCtx, const char *argValue);
  * acquires during execution.
  *
  * @param tpmCtx   The TPM context.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitDeleteTpm(cominitTpmContext_t *tpmCtx);
 
@@ -111,7 +111,7 @@ int cominitDeleteTpm(cominitTpmContext_t *tpmCtx);
  * @param keyfile   The Pointer to the file that contains the public key for
  * @param pcrIndex  The index of the PCR to extend.
  *
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitTpmExtendPCR(cominitTpmContext_t *tpmCtx, const char *keyfile, unsigned long pcrIndex);
 
@@ -120,7 +120,7 @@ int cominitTpmExtendPCR(cominitTpmContext_t *tpmCtx, const char *keyfile, unsign
  * needs during execution.
  *
  * @param tpmCtx   The TPM context.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitInitTpm(cominitTpmContext_t *tpmCtx);
 

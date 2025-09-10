@@ -36,7 +36,7 @@ int cominitCryptoVerifySignature(const uint8_t *data, size_t dataLen, const uint
  * @param digest    Pointer to an allocated buffer capable of holding the bytes given by \a digestLen.
  * @param digestLen The length of the digest.
  *
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitCreateSHA256DigestfromKeyfile(const char *keyfile, unsigned char *digest, size_t digestLen);
 

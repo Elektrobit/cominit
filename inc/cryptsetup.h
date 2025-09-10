@@ -19,7 +19,7 @@
  * @param passphrase    Pointer to the buffer containing a passphrase for unlocking a LUKS volume.
  * @param passphraseLen Size of the passphrase.
  *
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitCryptsetupCreateLuksVolume(char *devCrypt, uint8_t *passphrase, size_t passphraseLen);
 
@@ -29,7 +29,7 @@ int cominitCryptsetupCreateLuksVolume(char *devCrypt, uint8_t *passphrase, size_
  *
  * @param devCrypt      The target device.
  *
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitCryptsetupOpenLuksVolume(char *devCrypt);
 
@@ -38,7 +38,7 @@ int cominitCryptsetupOpenLuksVolume(char *devCrypt);
  *
  * @param devCrypt      The target device.
  *
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitCryptsetupAddToken(char *devCrypt);
 
