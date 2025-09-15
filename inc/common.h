@@ -48,4 +48,17 @@ typedef struct cominitCliArgs {
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 #endif
 
+/**
+ * Get the size of a partition.
+ *
+ * Uses the BLKGETSIZE64 ioctl() to return the size in Bytes. The given file descriptor must be opened and associated
+ * with a partition block device.
+ *
+ * @param partSize  Return pointer for the size in Bytes.
+ * @param fd         The partition file descriptor.
+ *
+ * @return  0 on success, -1 otherwise
+ */
+int cominitCommonGetPartSize(uint64_t *partSize, int fd);
+
 #endif /* __COMMON_H__ */

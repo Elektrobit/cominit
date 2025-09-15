@@ -9,10 +9,10 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <unistd.h>
 
+#include "common.h"
 #include "crypto.h"
 #include "keyring.h"
 #include "output.h"
@@ -82,7 +82,7 @@ int cominitLoadVerifyMetadata(cominitRfsMetaData_t *meta, const char *keyfile) {
         return -1;
     }
 
-    if (cominitGetPartSize(&partSize, partFd) == -1) {
+    if (cominitCommonGetPartSize(&partSize, partFd) == -1) {
         cominitErrPrint("Could not determine size of partition \'%s\'.", meta->devicePath);
         close(partFd);
         return -1;
@@ -137,18 +137,6 @@ static int cominitBinReadall(uint8_t *buf, int fd, off_t offset, size_t len) {
             return -1;
         }
         len -= bytesRead;
-    }
-    return 0;
-}
-
-int cominitGetPartSize(uint64_t *partSize, int fd) {
-    if (partSize == NULL) {
-        cominitErrPrint("Return pointer must not be NULL.");
-        return -1;
-    }
-    if (ioctl(fd, (int)BLKGETSIZE64, partSize) == -1) {
-        cominitErrnoPrint("Could not determine size of partition.");
-        return -1;
     }
     return 0;
 }

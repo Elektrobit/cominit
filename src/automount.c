@@ -177,7 +177,7 @@ int cominitAutomountFindPartitionOnDisk(cominitGPTDisk_t *gptDisk, const char *g
         } else {
             cominitGPTHeader_t *hdr = &(gptDisk->hdr);
             uint64_t diskSize = 0;
-            if (cominitGetPartSize(&diskSize, fd) == -1) {
+            if (cominitCommonGetPartSize(&diskSize, fd) == -1) {
                 cominitErrPrint("Could not get size of disk %s.", gptDisk->diskName);
             } else {
                 uint32_t partitionEntrySize = hdr->partitionEntrySize;

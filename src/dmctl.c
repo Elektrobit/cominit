@@ -56,7 +56,7 @@ static int cominitDmctlGetSectors(const char *device, unsigned long *sectors) {
     }
 
     uint64_t partSize;
-    if (cominitGetPartSize(&partSize, fd) == -1) {
+    if (cominitCommonGetPartSize(&partSize, fd) == -1) {
         return -1;
     }
 
