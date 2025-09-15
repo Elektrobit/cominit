@@ -13,6 +13,7 @@ add_executable(
   cominit
   automount.c
   cominit.c
+  common.c
   crypto.c
   cryptsetup.c
   keyring.c
