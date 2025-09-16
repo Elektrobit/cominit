@@ -34,7 +34,7 @@ void cominitAutomountFindPartitionOnDiskTestSuccess(void **state) {
     memset(&hdr->partitionEntrySize, GPT_HEADER_DEFAULT_ENTRY_SIZE, 1);
     memset(&hdr->partitionEntryCount, 1, 1);
 
-    expect_string(__wrap_open, pathname, disk.diskName);
+    expect_string(__wrap_open, path, disk.diskName);
     expect_any(__wrap_open, flags);
     will_return(__wrap_open, cominitDiskFd);
 

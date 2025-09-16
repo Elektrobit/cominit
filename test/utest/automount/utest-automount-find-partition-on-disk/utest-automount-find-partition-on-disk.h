@@ -17,7 +17,7 @@ extern int cominitDiskFd;
 extern int cominitDiskFdFailure;
 
 extern bool cominitMockPreadEnabled;
-int __real_pread(int fd, void *buf, size_t count, off_t offset);  // NOLINT(readability-identifier-naming)
+ssize_t __real_pread(int fd, void *buf, size_t count, off_t offset);  // NOLINT(readability-identifier-naming)
 ssize_t __wrap_pread(int fd, void *buf, size_t count, off_t offset);
 
 /**

@@ -9,8 +9,6 @@
 
 #include "common.h"
 #include "mock_close.h"
-#include "mock_free.h"
-#include "mock_malloc.h"
 #include "mock_open.h"
 #include "utest-automount-find-partition-on-disk.h"
 
@@ -26,7 +24,7 @@ void cominitAutomountFindPartitionOnDiskTestGptIsZeroFailure(void **state) {
     memset(hdr, zero, sizeof(cominitGPTHeader_t));
     memset(&hdr->partitionEntrySize, GPT_HEADER_DEFAULT_ENTRY_SIZE, 1);
 
-    expect_string(__wrap_open, pathname, disk.diskName);
+    expect_string(__wrap_open, path, disk.diskName);
     expect_any(__wrap_open, flags);
     will_return(__wrap_open, cominitDiskFdFailure);
 
