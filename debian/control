@@ -12,6 +12,7 @@ Build-Depends:
  doxygen,
  graphviz,
  pkg-config,
+ cmocka-extensions-dev,
 Rules-Requires-Root: no
 Standards-Version: 4.6.0.1
 Homepage: https://github.com/Elektrobit/cominit
