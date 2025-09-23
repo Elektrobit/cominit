@@ -24,7 +24,18 @@
  *
  * @return  The size of the returned payload on success. -1 if no key was found or another error occurred.
  */
-ssize_t cominitGetKey(uint8_t *key, size_t keyMaxLen, char *keyDesc);
+ssize_t cominitKeyringGetKey(uint8_t *key, size_t keyMaxLen, char *keyDesc);
+
+/**
+ * Adds a key according to \a keyDesc in the user keyring (UID 0 in this case).
+ *
+ * @param key        Pointer to the key's payload.
+ * @param keyLen     Length of the key.
+ * @param keyDesc    Null-terminated description string of the key.
+ *
+ * @return  0 on success, -1 otherwise
+ */
+int cominitKeyringAddUserKey(const char *keyDesc, const uint8_t *key, size_t keyLen);
 
 #ifdef COMINIT_FAKE_HSM
 
@@ -62,7 +73,7 @@ ssize_t cominitGetKey(uint8_t *key, size_t keyMaxLen, char *keyDesc);
  *
  * @return  0 on success, -1 on failure.
  */
-int cominitInitFakeHsm(void);
+int cominitKeyringInitFakeHsm(void);
 #endif
 
 #endif /* __KEYRING_H__ */

@@ -16,7 +16,6 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-TSS2_RC __wrap_Tss2_TctiLdr_Initialize(const char *nameConf,
-                                       TSS2_TCTI_CONTEXT **context);
+TSS2_RC __wrap_Tss2_TctiLdr_Initialize(const char *nameConf, TSS2_TCTI_CONTEXT **context);
 
 #endif /* __MOCK_TSS2_TCTILDR_INITIALIZE_H__ */

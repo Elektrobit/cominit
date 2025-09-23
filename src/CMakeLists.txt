@@ -11,12 +11,18 @@ endif()
 
 add_executable(
   cominit
+  automount.c
   cominit.c
+  common.c
+  crypto.c
+  cryptsetup.c
   keyring.c
   minsetup.c
   meta.c
   dmctl.c
   output.c
+  securememory.c
+  subprocess.c
   ${CMAKE_CURRENT_BINARY_DIR}/version.c
 )
 
@@ -31,6 +37,10 @@ target_link_libraries(
   PRIVATE
     ${MBEDTLS_CRYPTO_LIBRARY}
 )
+
+if(ENABLE_SENSITIVE_LOGGING)
+  target_compile_definitions(cominit PRIVATE COMINIT_ENABLE_SENSITIVE_LOGGING)
+endif()
 
 if(USE_TPM)
   target_compile_definitions(cominit PRIVATE COMINIT_USE_TPM)

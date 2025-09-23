@@ -17,6 +17,8 @@
   - [HSM Emulation](#hsm-emulation)
   - [TPM Usage](#tpm-usage)
   - [Secure Storage](#secure-storage)
+  - [log level](#log-level)
+  - [Automount](#automount)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -83,7 +85,9 @@ rdinit=/path/to/cominit [OTHER_KERNEL_PARAMETERS] -- [COMINIT_ARGV1] [COMINIT_AR
 ```
 
 `cominit` currently looks for an argument `root` or `cominit.rootfs` in its argument vector for the location of
-the rootfs. `cominit` will mount and switch into the value of this argument (e.g. `root=/dev/sdxy`).  
+the rootfs. `cominit` will mount and switch into the value of this argument (e.g. `root=/dev/sdxy`).
+If no valid argument provided `cominit` can detect the rootfs partition from it's GUID if GPT is used.
+See [Automount](#automount) for more information.
 All other settings concerning the rootfs are read from the partition's metadata.
 
 If the rootfs is not immediately available or accessible, cominit will wait a pre-set interval and try again for a
@@ -215,18 +219,18 @@ If the flag is set cominit will also look for these arguments in its argument ve
 Details on this feature will be given in the next chapter.
 
 ### Secure Storage
-`Secure Storage` is an encrypted volume that is initialized on the very first boot:
-On initial boot, cominit generates a unique encryption key for the Secure Storage volume.
-This key is sealed by the TPM using a policy based on a specified list of PCR indices (i.e. `cominit.pcrSeal=10,11,12`).
-The TPM will only unseal the key if the PCR values exactly match those recorded at the time of sealing,
+`Secure Storage` is an encrypted LUKS volume that is initialized on the very first boot:
+On initial boot, cominit generates a unique passphrase for the Secure Storage volume.
+This passphrase is sealed by the TPM using a policy based on a specified list of PCR indices (i.e. `cominit.pcrSeal=10,11,12`).
+The TPM will only unseal the passphrase if the PCR values exactly match those recorded at the time of sealing,
 ensuring that the data on the secure storage can only be accessed in a trusted system state.
-On a successful unsealing cominit uses that key to activate the target partition (i.e. `cominit.crypt=/dev/sda6`)
-as a dm-crypt device and currently mounts it to /mnt.
+On a successful unsealing cominit uses that passphrase to open the target partition (i.e. `cominit.crypt=/dev/sda6`)
+as a LUKS volume and currently mounts it to /mnt.
 
 To activate `Secure Storage` and use this feature properly, three things should be taking care of:
 
   1. Kernel config: Must support dm-crypt and the used encryption algorithm.
-  1. Partition table: There must be a partition to store the sealed key to and a partition to be encrypted.
+  1. Partition table: There must be a partition to store the sealed passphrase to and a partition to be encrypted.
   1. Argument vector: Must contain the device nodes and the list of PCR indices.
 
 Currently cominit uses `aes-xts-plain64` for encryption. Therefor a minimal working kernel config is:
@@ -241,14 +245,56 @@ CONFIG_CRYPTO_GF128MUL=y
 CONFIG_CRYPTO_AES_ARM64_NEON_BLK=y
 ```
 
-Currently cominit expects an empty volume for encryption and an ext4 formatted volume for saving the sealed key. 
+Currently cominit expects an empty volume for encryption and an ext4 formatted volume for saving the sealed passphrase.
 If wic is used to define partition layouts, working examples for partition table entries are:
 
 ```
 part tpmblob --fstype=ext4 --label tpmblob --align 1024 --fixed-size 16M
-part secureStorage --align 1024 --fixed-size 16M
+part secureStorage --align 1024 --fixed-size 128M
 ```
 
 The corresponding device nodes should then be passed along with the PCR list to cominit via kernel command line
 (i.e `cominit.blob=/dev/sda5` , `cominit.crypt=/dev/sda6` and `cominit.pcrSeal=10,11,12`).
+If no valid argument provided `cominit` can detect the secure storage partition from it's GUID if GPT is used.
+See [Automount](#automount) for more information.
+
+### log level
+
+Cominit supports configurable log levels that can be set via command line
+(i.e "logLevel=4" or "cominit.logLevel=4" to set level to DEBUG).
+
+Available levels are
+```
+    COMINIT_LOG_LEVEL_NONE = 0,   ///< No print outs.
+    COMINIT_LOG_LEVEL_ERR,        ///< Only error print outs.
+    COMINIT_LOG_LEVEL_WARN,       ///< Only error and warning print outs.
+    COMINIT_LOG_LEVEL_INFO,       ///< Only error, warning and info print outs.
+    COMINIT_LOG_LEVEL_DEBUG,      ///< Only error, warning, info and debug print outs.
+    COMINIT_LOG_LEVEL_SENSITIVE,  ///< Only error, warning, info, debug and sensitive print outs.
+```
+Sensitive outputs are additionally guarded and can be activated by compiling with -DENABLE_SENSITIVE_LOGGING=On flag
+and then setting the log level to SENSITIVE ("logLevel=5" or "cominit.logLevel=5"). The default log level
+is INFO ("logLevel=3" or "cominit.logLevel=3"). The default will be applied if no or an invalid log level is given.
+
+### Automount
+
+When a disk is partitioned with a GUID Partition Table (GPT), each partition
+entry contains a **type GUID** and a **unique partition GUID**.
+See [discoverable_partitions_specification](https://uapi-group.org/specifications/specs/discoverable_partitions_specification/)
+for more information.
+This allows the system to identify partitions not only by their device node
+(e.g. `/dev/sda6`), but also by these stable identifiers stored in the table
+itself.
+
+The automount logic uses a predefined partition type GUID to detect and select the correct device for mounting. It searches for the first partition matching this GUID and mounts it. This approach makes the setup more robust against changes in device enumeration order or disk layout, since the GUID remains constant even if device names such as /dev/sda or /dev/mmcblk0 change. However, it requires that exactly one partition with the given GUID is present; otherwise, the behavior is undefined.
+
+Currently detection for rootfs and secure storage are implemented:
+```
+GUID of the rootfs: b921b045-1df0-41c3-af44-4c6f280d3fae
+GUID of the secure storage: CA7D7CCB-63ED-4C53-861C-1742536059CC
+```
+If wic is used to define partition layouts, working examples for partition table entries are:
+bootloader --ptable gpt
+part rootfsA --fstype=ext4 --align 1024 --fixed-size 512M --part-type=b921b045-1df0-41c3-af44-4c6f280d3fae --use-uuid
+part secureStorage --align 1024 --fixed-size 128M --part-type=CA7D7CCB-63ED-4C53-861C-1742536059CC --use-uuid
 

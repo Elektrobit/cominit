@@ -16,13 +16,7 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-TSS2_RC __wrap_Esys_PolicyPCR(
-    ESYS_CONTEXT *esysContext,
-    ESYS_TR policySession,
-    ESYS_TR shandle1,
-    ESYS_TR shandle2,
-    ESYS_TR shandle3,
-    const TPM2B_DIGEST *pcrDigest,
-    const TPML_PCR_SELECTION *pcrs);
+TSS2_RC __wrap_Esys_PolicyPCR(ESYS_CONTEXT *esysContext, ESYS_TR policySession, ESYS_TR shandle1, ESYS_TR shandle2,
+                              ESYS_TR shandle3, const TPM2B_DIGEST *pcrDigest, const TPML_PCR_SELECTION *pcrs);
 
 #endif /* __MOCK_ESYS_POLICYPCR_H__ */

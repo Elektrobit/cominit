@@ -16,11 +16,7 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-void __wrap_Esys_Clear(
-    ESYS_CONTEXT *esysContext,
-    ESYS_TR authHandle,
-    ESYS_TR shandle1,
-    ESYS_TR shandle2,
-    ESYS_TR shandle3);
+void __wrap_Esys_Clear(ESYS_CONTEXT *esysContext, ESYS_TR authHandle, ESYS_TR shandle1, ESYS_TR shandle2,
+                       ESYS_TR shandle3);
 
 #endif /* __MOCK_ESYS_CLEAR_H__ */

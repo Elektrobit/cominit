@@ -6,57 +6,70 @@
 #ifndef __OUTPUT_H__
 #define __OUTPUT_H__
 
+#include <stdbool.h>
+
+/**
+ * Structure defining the different lof levels.
+ */
+typedef enum {
+    COMINIT_LOG_LEVEL_NONE = 0,   ///< No print outs.
+    COMINIT_LOG_LEVEL_ERR,        ///< Only error print outs.
+    COMINIT_LOG_LEVEL_WARN,       ///< Only error and warning print outs.
+    COMINIT_LOG_LEVEL_INFO,       ///< Only error, warning and info print outs.
+    COMINIT_LOG_LEVEL_DEBUG,      ///< Only error, warning, info and debug print outs.
+    COMINIT_LOG_LEVEL_SENSITIVE,  ///< Only error, warning, info, debug and sensitive print outs.
+    COMINIT_LOG_LEVEL_COUNT,      ///< The Number of log levels.
+    COMINIT_LOG_LEVEL_INVALID     ///< Invalid log level configuration.
+} cominitLogLevelE_t;
+
 /**
  * Prefix to put in front of log/info/error messages.
  */
 #define COMINIT_PRINT_PREFIX "[COMINIT] "
 
 /**
- * Print an info message.
- *
- * Can be used like printf(). In contrast to printf(), this function adds #COMINIT_PRINT_PREFIX at the start and a
- * newline at the end. It uses stdout as its output stream.
- *
- * @return The number of characters printed.
- */
-int cominitInfoPrint(const char *format, ...);
-
-/**
- * Macro to print an error message including the offending source file, function, and line using cominitErrPrintFFL().
- */
-#define cominitErrPrint(...) cominitErrPrintFFL(__FILE__, __func__, __LINE__, __VA_ARGS__)
-/**
- * Print an error message.
+ * Print a message. Message is only printed if current visible log level is higher than the message's log level.
+ * Sensitive messages can only be printed by setting compiler option.
  *
  * Can be used like printf(). In contrast to printf(), this function adds #COMINIT_PRINT_PREFIX and the given
  * \a file, \a func, and \a line parameters at the start as well as a newline at the end. It uses stderr as its output
  * stream.
  *
- * The macro cominitErrPrint() should be used to provide the function with the correct \a file, \a func, and \a line
- * parameters.
- *
  * @return The number of characters printed.
  */
-int cominitErrPrintFFL(const char *file, const char *func, int line, const char *format, ...);
+int cominitOutputLogFunc(cominitLogLevelE_t logLevel, const char *file, const char *func, int line, bool printErrno,
+                         const char *format, ...);
 
 /**
- * Macro to print an error message using cominitErrnoPrintFFL() including the offending source file, function, and line,
- * as well as the value of errno.
+ * Sets the visible log level.
  *
+ * @param cominitLogLevel   The visible log level.
  */
-#define cominitErrnoPrint(...) cominitErrnoPrintFFL(__FILE__, __func__, __LINE__, __VA_ARGS__)
+void cominitOutputSetVisibleLogLevel(cominitLogLevelE_t cominitLogLevel);
+
 /**
- * Print an error message including a text representation of the current value of errno.
+ * Parses the log level from argv that should be visible.
  *
- * Can be used like printf(). In contrast to printf(), this function adds #COMINIT_PRINT_PREFIX and the given
- * \a file, \a func, and \a line parameters at the start as well as a text representation of errno and a newline at the
- * end. It uses stderr as its output stream.
  *
- * The macro cominitErrnoPrint() should be used to provide the function with the correct \a file, \a func, and \a line
- * parameters.
- *
- * @return The number of characters printed.
+ * @param logLevel  Pointer to the structure that receives the parsed log level.
+ * @param argValue  The parsed value of the argument found in the provided argument vector.
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
-int cominitErrnoPrintFFL(const char *file, const char *func, int line, const char *format, ...);
+int cominitOutputParseLogLevel(cominitLogLevelE_t *logLevel, const char *argValue);
+
+#define cominitDebugPrint(...) \
+    cominitOutputLogFunc(COMINIT_LOG_LEVEL_DEBUG, __FILE__, __func__, __LINE__, false, __VA_ARGS__)
+
+#define cominitErrPrint(...) \
+    cominitOutputLogFunc(COMINIT_LOG_LEVEL_ERR, __FILE__, __func__, __LINE__, false, __VA_ARGS__)
+
+#define cominitErrnoPrint(...) \
+    cominitOutputLogFunc(COMINIT_LOG_LEVEL_ERR, __FILE__, __func__, __LINE__, true, __VA_ARGS__)
+
+#define cominitInfoPrint(...) \
+    cominitOutputLogFunc(COMINIT_LOG_LEVEL_INFO, __FILE__, __func__, __LINE__, false, __VA_ARGS__)
+
+#define cominitSensitivePrint(...) \
+    cominitOutputLogFunc(COMINIT_LOG_LEVEL_SENSITIVE, __FILE__, __func__, __LINE__, false, __VA_ARGS__)
 
 #endif /* __OUTPUT_H__ */

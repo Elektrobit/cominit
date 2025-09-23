@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE AND DEFINED ENV{CMAKE_TOOLCHAIN_FILE})
   set(CMAKE_TOOLCHAIN_FILE $ENV{CMAKE_TOOLCHAIN_FILE})
 endif()
-project(cominit VERSION 0.9.0)
+project(cominit VERSION 0.11.1)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_EXTENSIONS NO)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -13,6 +13,7 @@ include(GNUInstallDirs)
 option(UNIT_TESTS "Build unit tests" ON)
 option(FAKE_HSM "Emulate a HSM for development" OFF)
 option(USE_TPM "Add TPM functionality for development" OFF)
+option(ENABLE_SENSITIVE_LOGGING "Print sensitive logs" OFF)
 set(FAKE_HSM_KEY_DESCS
     "dm-integrity-hmac-secret dm-integrity-jmac-secret dm-integrity-jcrypt-secret"
     CACHE STRING
@@ -61,8 +62,19 @@ add_compile_options(
   -D_FORTIFY_SOURCE=2
 )
 
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Debug")
+if (CMAKE_BUILD_TYPE STREQUAL "Analyzer")
+  add_compile_options(-fanalyzer)
+elseif (CMAKE_BUILD_TYPE STREQUAL "Asan")
+  link_libraries(asan)
+  add_compile_options(-fsanitize=address)
+elseif(CMAKE_BUILD_TYPE STREQUAL "Ubsan")
+  link_libraries(ubsan)
+  add_compile_options(-fsanitize=undefined)
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_compile_options(-O3 -DNDEBUG -g)
+elseif(CMAKE_BUILD_TYPE STREQUAL "Coverage")
+  add_compile_options(-coverage -g)
+  add_link_options(--coverage)
 endif()
 
 add_subdirectory(src/)
@@ -73,9 +85,9 @@ endif(UNIT_TESTS)
 
 find_package(Doxygen)
 add_custom_target(
-  doxygen
-  COMMAND doxygen
-  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+  doxygen 
+  COMMAND doxygen ${PROJECT_SOURCE_DIR}/Doxyfile
+  WORKING_DIRECTORY ${DOC_BUILD_DIR}
 )
 
 add_custom_target(

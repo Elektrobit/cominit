@@ -16,12 +16,7 @@
  * no-op.
  */
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-TSS2_RC __wrap_Esys_PolicyGetDigest(
-    ESYS_CONTEXT *esysContext,
-    ESYS_TR policySession,
-    ESYS_TR shandle1,
-    ESYS_TR shandle2,
-    ESYS_TR shandle3,
-    TPM2B_DIGEST **policyDigest);
+TSS2_RC __wrap_Esys_PolicyGetDigest(ESYS_CONTEXT *esysContext, ESYS_TR policySession, ESYS_TR shandle1,
+                                    ESYS_TR shandle2, ESYS_TR shandle3, TPM2B_DIGEST **policyDigest);
 
 #endif /* __MOCK_ESYS_POLICYGETDIGEST_H__ */

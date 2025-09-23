@@ -1,0 +1,39 @@
+@startuml
+left to right direction
+
+rectangle "TPM" as TPM {
+  [1. Extend PCR]
+  [4. Unseal blob if PCR matches policy]
+}
+
+rectangle "blob partition" as BLOB {
+  [3. Sealed blob]
+}
+
+rectangle "U-Boot, Kernel" as MEASUREMENTS {
+  [measurements]
+}
+
+rectangle "Cominit" as COMINIT {
+  [0. public verification key of rootfs metadata]
+  [2. Mount blob partition]
+  [5. Add passphrase from blob to user keyring]
+  [6. cryptsetup opens LUKS volume with passphrase]
+  [7. switch to rootfs]
+}
+
+rectangle "Crinit" as Crinit {
+ [8. Proceed boot]
+}
+
+[0. public verification key of rootfs metadata] --> [1. Extend PCR]
+[measurements] --> [1. Extend PCR]
+[1. Extend PCR] --> [2. Mount blob partition]
+[2. Mount blob partition] --> [3. Sealed blob]
+[3. Sealed blob] --> [4. Unseal blob if PCR matches policy]
+[4. Unseal blob if PCR matches policy] --> [5. Add passphrase from blob to user keyring]
+[5. Add passphrase from blob to user keyring] --> [6. cryptsetup opens LUKS volume with passphrase]
+[6. cryptsetup opens LUKS volume with passphrase] --> [7. switch to rootfs]
+[7. switch to rootfs] --> [8. Proceed boot]
+
+@enduml

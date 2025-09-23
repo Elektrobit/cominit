@@ -10,18 +10,10 @@
 #include "unit_test.h"
 
 // NOLINTNEXTLINE(readability-identifier-naming)    Rationale: Naming scheme fixed due to linker wrapping.
-TSS2_RC __wrap_Esys_StartAuthSession(
-    ESYS_CONTEXT *esysContext,
-    ESYS_TR tpmKey,
-    ESYS_TR bind,
-    ESYS_TR shandle1,
-    ESYS_TR shandle2,
-    ESYS_TR shandle3,
-    const TPM2B_NONCE *nonceCaller,
-    TPM2_SE sessionType,
-    const TPMT_SYM_DEF *symmetric,
-    TPMI_ALG_HASH authHash,
-    ESYS_TR *sessionHandle) {
+TSS2_RC __wrap_Esys_StartAuthSession(ESYS_CONTEXT *esysContext, ESYS_TR tpmKey, ESYS_TR bind, ESYS_TR shandle1,
+                                     ESYS_TR shandle2, ESYS_TR shandle3, const TPM2B_NONCE *nonceCaller,
+                                     TPM2_SE sessionType, const TPMT_SYM_DEF *symmetric, TPMI_ALG_HASH authHash,
+                                     ESYS_TR *sessionHandle) {
     check_expected_ptr(esysContext);
     check_expected(tpmKey);
     check_expected(bind);

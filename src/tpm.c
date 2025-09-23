@@ -1,3 +1,9 @@
+// SPDX-License-Identifier: MIT
+/**
+ * @file tpm.c
+ * @brief Implementation related to TPM handling
+ */
+
 #include "tpm.h"
 
 #include <ctype.h>
@@ -12,18 +18,14 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "crypto.h"
+#include "cryptsetup.h"
 #include "dmctl.h"
-#include "mbedtls/error.h"
-#include "mbedtls/pk.h"
-#include "mbedtls/sha256.h"
-#include "mbedtls/version.h"
+#include "keyring.h"
 #include "meta.h"
 #include "output.h"
-
-#define DER_BUFFER_SIZE 1600  ///< buffer size to hold RSA‑4k key.
-#define SHA256_LEN 32         ///< size of SHA256 digest.
-
-#define POLICY_FAILURE_RC 0x0000099d  ///< return code on policy failure.
+#include "securememory.h"
+#include "subprocess.h"
 
 /**
  * Result codes on checking the current state of the blob partition.
@@ -50,7 +52,7 @@ static int cominitTpmLoadDriver() {
  *
  * @param tpmCtx   The TPM context.
  *
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitTpmSelftest(cominitTpmContext_t *tpmCtx) {
     int result = EXIT_FAILURE;
@@ -70,7 +72,7 @@ static int cominitTpmSelftest(cominitTpmContext_t *tpmCtx) {
  * @param dirPath   The fullpath to the directory that should be created.
  * @param mode   The mode of the new directory.
  *
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitMkdir(const char *dirPath, mode_t mode) {
     int result = EXIT_FAILURE;
@@ -148,44 +150,11 @@ static cominitBlobState_t cominitTpmSetupBlob(cominitCliArgs_t *argCtx) {
 }
 
 /**
- * Creates a key to encrypt/decrypt a secure storage.
- *
- * @param ectx The Pointer to the initialized ESYS_CONTEXT handle.
- * @param key Address of a TPM2B_DIGEST* pointer for allocating a TPM2B_DIGEST structure and populating it
- *                   with random bytes.
- * @return  0 on success, 1 otherwise
- */
-static int cominitTpmCreateKey(ESYS_CONTEXT *ectx, TPM2B_DIGEST **key) {
-    int result = EXIT_FAILURE;
-    TSS2_RC rc = Esys_GetRandom(ectx, ESYS_TR_NONE, ESYS_TR_NONE, ESYS_TR_NONE, SHA256_LEN, key);
-
-    if (rc == TSS2_RC_SUCCESS && *key != NULL) {
-        result = EXIT_SUCCESS;
-    }
-
-    return result;
-}
-
-/**
- * Deleting the key to encrypt/decrypt a secure storage in memory.
- *
- * @param key Pointer to a TPM2B_DIGEST structure holding a key.
- * @return  0 on success, 1 otherwise
- */
-static void cominitTpmDeleteKey(TPM2B_DIGEST **key) {
-    if (key && *key) {
-        memset((*key)->buffer, 0, (*key)->size);
-        Esys_Free(*key);
-        *key = NULL;
-    }
-}
-
-/**
  * Saves the sealed blob to the given path on the blob partition.
  *
  * @param outPublic     The Pointer to the structure that holds the public meta data.
  * @param outPrivate    The Pointer to the structure that holds the private data.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitTpmSaveBlob(TPM2B_PUBLIC *outPublic, TPM2B_PRIVATE *outPrivate) {
     int result = EXIT_FAILURE;
@@ -210,7 +179,7 @@ static int cominitTpmSaveBlob(TPM2B_PUBLIC *outPublic, TPM2B_PRIVATE *outPrivate
  *
  * @param ectx The Pointer to the initialized ESYS_CONTEXT handle.
  * @param primaryHandle Pointer to an ESYS_TR holding a transient primary key handle.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitTpmSavePrimaryHandle(ESYS_CONTEXT *ectx, ESYS_TR *primaryHandle) {
     int result = EXIT_FAILURE;
@@ -251,11 +220,10 @@ static void cominitTpmSelectPcr(cominitCliArgs_t *argCtx, TPML_PCR_SELECTION *pc
  * @param outPublic Address of a TPM2B_PUBLIC pointer that receives the public meta data.
  * @param outPrivate    Address of a TPM2B_PRIVATE pointer that receives the private data.
  * @param argCtx Pointer to the structure that holds the parsed options.
- * @param key Pointer to an TPM2B_DIGEST structure holding a key.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitTpmSeal(ESYS_CONTEXT *ectx, TPM2B_PUBLIC **outPublic, TPM2B_PRIVATE **outPrivate,
-                          cominitCliArgs_t *argCtx, TPM2B_DIGEST *key) {
+                          cominitCliArgs_t *argCtx) {
     int result = EXIT_FAILURE;
     TPM2B_DIGEST *policyDigest = NULL;
     ESYS_TR sess;
@@ -265,9 +233,6 @@ static int cominitTpmSeal(ESYS_CONTEXT *ectx, TPM2B_PUBLIC **outPublic, TPM2B_PR
     TPM2B_CREATION_DATA *creationData = NULL;
     TPM2B_DIGEST *creationHash = NULL;
     TPMT_TK_CREATION *creationTicket = NULL;
-    TPM2B_CREATION_DATA *creationData2 = NULL;
-    TPM2B_DIGEST *creationHash2 = NULL;
-    TPMT_TK_CREATION *creationTicket2 = NULL;
 
     TPM2B_SENSITIVE_CREATE inSensitivePrimary = {.size = 0};
 
@@ -335,50 +300,8 @@ static int cominitTpmSeal(ESYS_CONTEXT *ectx, TPM2B_PUBLIC **outPublic, TPM2B_PR
                 if (rc != TSS2_RC_SUCCESS) {
                     cominitErrPrint("Get policy digest failed");
                 } else {
-                    TPM2B_PUBLIC inPublic2 = {
-                        .size = 0,
-                        .publicArea = {
-                            .type = TPM2_ALG_KEYEDHASH,
-                            .nameAlg = TPM2_ALG_SHA256,
-                            .objectAttributes =
-                                (TPMA_OBJECT_USERWITHAUTH | TPMA_OBJECT_FIXEDTPM | TPMA_OBJECT_FIXEDPARENT),
-
-                            .authPolicy =
-                                {
-                                    .size = 0,
-                                },
-                            .parameters.keyedHashDetail = {.scheme = {.scheme = TPM2_ALG_NULL,
-                                                                      .details = {.hmac = {.hashAlg =
-                                                                                               TPM2_ALG_SHA256}}}},
-                            .unique.keyedHash =
-                                {
-                                    .size = 0,
-                                    .buffer = {0},
-                                },
-                        }};
-
-                    inPublic2.publicArea.authPolicy.size = policyDigest->size;
-                    memcpy(inPublic2.publicArea.authPolicy.buffer, policyDigest->buffer, policyDigest->size);
-
-                    TPM2B_DATA outsideInfo2 = {
-                        .size = 0,
-                        .buffer = {0},
-                    };
-
-                    TPML_PCR_SELECTION creationPCR2 = {
-                        .count = 0,
-                    };
-
-                    TPM2B_SENSITIVE_CREATE inSensitive2 = {.size = 0};
-
-                    inSensitive2.sensitive.data.size = key->size;
-                    memcpy(inSensitive2.sensitive.data.buffer, key->buffer, key->size);
-
-                    rc = Esys_Create(ectx, primaryHandle, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE, &inSensitive2,
-                                     &inPublic2, &outsideInfo2, &creationPCR2, outPrivate, outPublic, &creationData2,
-                                     &creationHash2, &creationTicket2);
-
-                    if (rc != TSS2_RC_SUCCESS) {
+                    result = cominitSecurememoryEsysCreate(ectx, &primaryHandle, outPublic, outPrivate, policyDigest);
+                    if (rc != EXIT_SUCCESS) {
                         cominitErrPrint("Creation of blob failed");
                     } else {
                         result = cominitTpmSavePrimaryHandle(ectx, &primaryHandle);
@@ -393,9 +316,6 @@ static int cominitTpmSeal(ESYS_CONTEXT *ectx, TPM2B_PUBLIC **outPublic, TPM2B_PR
     Esys_Free(creationData);
     Esys_Free(creationHash);
     Esys_Free(creationTicket);
-    Esys_Free(creationData2);
-    Esys_Free(creationHash2);
-    Esys_Free(creationTicket2);
     Esys_Free(policyDigest);
     Esys_Free(outPublicPrimary);
 
@@ -407,52 +327,47 @@ static int cominitTpmSeal(ESYS_CONTEXT *ectx, TPM2B_PUBLIC **outPublic, TPM2B_PR
  *
  * */
 static int cominitTpmFormatSecureStorage() {
-    int result = EXIT_FAILURE;
-    pid_t pid = fork();
-    if (pid == 0) {
-        char *argv[] = {"/sbin/mkfs.ext4", "-F", (char *)COMINIT_TPM_SECURE_STORAGE_LOCATION, NULL};
-        char *envp[] = {NULL};
-        execve("/sbin/mkfs.ext4", argv, envp);
-        _exit(1);
-    } else if (pid > 0) {
-        int status;
-        waitpid(pid, &status, 0);
-        if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-            result = EXIT_SUCCESS;
-        } else {
-            cominitErrPrint("mkfs.ext4 failed or was terminated.");
-        }
-    } else {
-        cominitErrPrint("fork failed");
-    }
-
-    return result;
+    char *argv[] = {"/sbin/mkfs.ext4", "-F", (char *)COMINIT_TPM_SECURE_STORAGE_LOCATION, NULL};
+    char *env[] = {NULL};
+    return cominitSubprocessSpawn(argv[0], argv, env);
 }
 
 /**
  * Sets up the secure storage with the unsealed key.
  *
  * @param argCtx Pointer to the structure that holds the parsed options.
- * @param key Pointer to an TPM2B_DIGEST structure holding a key.
  * @param isFirstBoot Flag to indicate whether it is the very first boot.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
-static int cominitTpmSetupSecureStorage(cominitCliArgs_t *argCtx, TPM2B_DIGEST *key, bool isFirstBoot) {
+static int cominitTpmSetupSecureStorage(cominitCliArgs_t *argCtx, bool isFirstBoot) {
     int result = EXIT_FAILURE;
 
-    if (cominitSetupDmDeviceCrypt(argCtx->devNodeCrypt, COMINIT_TPM_SECURE_STORAGE_NAME, key, 0) != 0) {
-        cominitErrPrint("setting up dm-crypt device failed");
-    } else {
-        result = EXIT_SUCCESS;
-        if (isFirstBoot == true) {
-            if (access("/sbin/mkfs.ext4", X_OK) != 0) {
-                cominitErrPrint("mkfs.ext4 not found or not executable");
+    if (isFirstBoot == true) {
+        result = cominitSecurememoryCreateLuksVolume(argCtx->devNodeCrypt);
+        if (result != EXIT_SUCCESS) {
+            cominitErrPrint("Could not create LUKS volume");
+        } else {
+            result = cominitCryptsetupAddToken(argCtx->devNodeCrypt);
+            if (result != EXIT_SUCCESS) {
+                cominitErrPrint("Could not add LUKS token");
             } else {
-                result = cominitTpmFormatSecureStorage();
+                result = cominitCryptsetupOpenLuksVolume(argCtx->devNodeCrypt);
                 if (result != EXIT_SUCCESS) {
-                    cominitErrPrint("formating secure storage failed");
+                    cominitErrPrint("Could not open LUKS volume");
+                } else {
+                    result = cominitTpmFormatSecureStorage();
+                    if (result != EXIT_SUCCESS) {
+                        cominitErrPrint("formating secure storage failed");
+                    }
                 }
             }
+        }
+    }
+
+    else {
+        result = cominitCryptsetupOpenLuksVolume(argCtx->devNodeCrypt);
+        if (result != EXIT_SUCCESS) {
+            cominitErrPrint("Could not open LUKS volume");
         }
     }
 
@@ -464,16 +379,15 @@ static int cominitTpmSetupSecureStorage(cominitCliArgs_t *argCtx, TPM2B_DIGEST *
  *
  * @param ectx  The Pointer to the initialized ESYS_CONTEXT handle.
  * @param argCtx Pointer to the structure that holds the parsed options.
- * @param key Pointer to an TPM2B_DIGEST structure holding a key.
  * @return  Sealed=3 on success, TpmFailure=0 otherwise
  */
-static cominitTpmState_t cominitTpmSealBlob(ESYS_CONTEXT *ectx, cominitCliArgs_t *argCtx, TPM2B_DIGEST *key) {
+static cominitTpmState_t cominitTpmSealBlob(ESYS_CONTEXT *ectx, cominitCliArgs_t *argCtx) {
     TPM2B_PUBLIC *outPublic = NULL;
     TPM2B_PRIVATE *outPrivate = NULL;
     cominitTpmState_t state = TpmFailure;
     int result = EXIT_FAILURE;
 
-    result = cominitTpmSeal(ectx, &outPublic, &outPrivate, argCtx, key);
+    result = cominitTpmSeal(ectx, &outPublic, &outPrivate, argCtx);
     if (result != EXIT_SUCCESS) {
         cominitErrPrint("Could not seal the data.");
     } else {
@@ -507,7 +421,7 @@ static void cominitTpmUnmountBlob() {
  *
  * @param ectx  The Pointer to the initialized ESYS_CONTEXT handle.
  * @param primaryHandle Pointer to a ESYS_TR structure that receives the primary key handle.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitTpmLoadPrimaryHandle(ESYS_CONTEXT *ectx, ESYS_TR *primaryHandle) {
     int result = EXIT_FAILURE;
@@ -529,7 +443,7 @@ static int cominitTpmLoadPrimaryHandle(ESYS_CONTEXT *ectx, ESYS_TR *primaryHandl
  *
  * @param outPublic The Pointer to the structure that receives the public meta data.
  * @param outPrivate    The Pointer to the structure that receives the private data.
- * @return  0 on success, 1 otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 static int cominitTpmLoadBlob(TPM2B_PUBLIC *outPublic, TPM2B_PRIVATE *outPrivate) {
     int result = EXIT_FAILURE;
@@ -561,15 +475,13 @@ static int cominitTpmLoadBlob(TPM2B_PUBLIC *outPublic, TPM2B_PRIVATE *outPrivate
  * @param outPublic The Pointer to the structure that holds the public meta data.
  * @param outPrivate    The Pointer to the structure that holds the private data.
  * @param argCtx Pointer to the structure that holds the parsed options.
- * @param key Pointer to a TPM2B_DIGEST structure receiving a key.
  * @return  Unsealed=2 on success, TpmPolicyFailure=1 or TpmFailure=0 otherwise
  */
 static cominitTpmState_t cominitTpmUnseal(ESYS_CONTEXT *ectx, ESYS_TR *primaryHandle, TPM2B_PUBLIC *outPublic,
-                                          TPM2B_PRIVATE *outPrivate, cominitCliArgs_t *argCtx, TPM2B_DIGEST *key) {
+                                          TPM2B_PRIVATE *outPrivate, cominitCliArgs_t *argCtx) {
     ESYS_TR blobHandle = ESYS_TR_NONE;
     ESYS_TR sess = ESYS_TR_NONE;
     cominitTpmState_t state = TpmFailure;
-    TPM2B_SENSITIVE_DATA *outData = NULL;
 
     TSS2_RC rc = Esys_Load(ectx, *primaryHandle, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE, outPrivate, outPublic,
                            &blobHandle);
@@ -592,25 +504,14 @@ static cominitTpmState_t cominitTpmUnseal(ESYS_CONTEXT *ectx, ESYS_TR *primaryHa
             if (rc != TSS2_RC_SUCCESS) {
                 cominitErrPrint("Creating policy failed");
             } else {
-                rc = Esys_Unseal(ectx, blobHandle, sess, ESYS_TR_NONE, ESYS_TR_NONE, &outData);
-                if (rc != TSS2_RC_SUCCESS) {
-                    if (rc == POLICY_FAILURE_RC) {
-                        state = TpmPolicyFailure;
-                    } else {
-                        cominitErrPrint("Unsealing failed");
-                    }
-                } else {
-                    memcpy(key, outData->buffer, outData->size);
-                    key->size = outData->size;
-                    state = Unsealed;
-                }
+                state = cominitSecurememoryEsysUnseal(ectx, &blobHandle, &sess);
             }
         }
     }
 
     Esys_FlushContext(ectx, sess);
     Esys_FlushContext(ectx, blobHandle);
-    free(outData);
+
     return state;
 }
 
@@ -619,10 +520,9 @@ static cominitTpmState_t cominitTpmUnseal(ESYS_CONTEXT *ectx, ESYS_TR *primaryHa
  *
  * @param ectx  The Pointer to the initialized ESYS_CONTEXT handle.
  * @param argCtx Pointer to the structure that holds the parsed options.
- * @param key Pointer to a TPM2B_DIGEST structure receiving a key.
  * @return  Unsealed=2 on success, TpmPolicyFailure=1 or TpmFailure=0 otherwise
  */
-static cominitTpmState_t cominitTpmUnsealBlob(ESYS_CONTEXT *ectx, cominitCliArgs_t *argCtx, TPM2B_DIGEST *key) {
+static cominitTpmState_t cominitTpmUnsealBlob(ESYS_CONTEXT *ectx, cominitCliArgs_t *argCtx) {
     TPM2B_PUBLIC outPublic = {0};
     TPM2B_PRIVATE outPrivate = {0};
     ESYS_TR primaryHandle = ESYS_TR_NONE;
@@ -638,7 +538,7 @@ static cominitTpmState_t cominitTpmUnsealBlob(ESYS_CONTEXT *ectx, cominitCliArgs
         if (result != EXIT_SUCCESS) {
             cominitErrPrint("Could not retrieve blob.");
         } else {
-            tpmState = cominitTpmUnseal(ectx, &primaryHandle, &outPublic, &outPrivate, argCtx, key);
+            tpmState = cominitTpmUnseal(ectx, &primaryHandle, &outPublic, &outPrivate, argCtx);
         }
     }
 
@@ -674,49 +574,25 @@ int cominitInitTpm(cominitTpmContext_t *tpmCtx) {
 
 int cominitTpmExtendPCR(cominitTpmContext_t *tpmCtx, const char *keyfile, unsigned long pcrIndex) {
     int result = EXIT_FAILURE;
-    int err = -1;
     unsigned char digest[SHA256_LEN];
-    mbedtls_pk_context pkCtx;
-    TSS2_RC rc = TSS2_ESYS_RC_GENERAL_FAILURE;
 
     if (tpmCtx == NULL || keyfile == NULL) {
         cominitErrPrint("Invalid parameters");
     } else {
-        mbedtls_pk_init(&pkCtx);
-        err = mbedtls_pk_parse_public_keyfile(&pkCtx, keyfile);
+        result = cominitCreateSHA256DigestfromKeyfile(keyfile, digest, ARRAY_SIZE(digest));
+        if (result != EXIT_SUCCESS) {
+            cominitErrPrint("Could not hash the rootfs public key");
+        } else {
+            ESYS_TR pcrTR = ESYS_TR_PCR0 + pcrIndex;
+            TPML_DIGEST_VALUES vals = {.count = 1};
+            vals.digests[0].hashAlg = TPM2_ALG_SHA256;
+            memcpy(vals.digests[0].digest.sha256, digest, sizeof(digest));
 
-        if (err == 0) {
-            unsigned char der[DER_BUFFER_SIZE];
-            int derLen = mbedtls_pk_write_pubkey_der(&pkCtx, der, sizeof(der));
-            if (derLen > 0) {
-                const unsigned char *pubKeyDer = der + sizeof(der) - derLen;
-#if MBEDTLS_VERSION_MAJOR == 2
-                err = mbedtls_sha256_ret(pubKeyDer, (size_t)derLen, digest, 0);
-#else
-                err = mbedtls_sha256(pubKeyDer, (size_t)derLen, digest, 0);
-#endif
-                if (err == 0) {
-                    ESYS_TR pcrTR = ESYS_TR_PCR0 + pcrIndex;
-                    TPML_DIGEST_VALUES vals = {.count = 1};
-                    vals.digests[0].hashAlg = TPM2_ALG_SHA256;
-                    memcpy(vals.digests[0].digest.sha256, digest, sizeof(digest));
-
-                    rc = Esys_PCR_Extend(tpmCtx->esysCtx, pcrTR, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE, &vals);
-                }
-            } else {
-                err = -1;
+            TSS2_RC rc = Esys_PCR_Extend(tpmCtx->esysCtx, pcrTR, ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE, &vals);
+            if (rc != TSS2_RC_SUCCESS) {
+                result = EXIT_FAILURE;
             }
         }
-
-        mbedtls_pk_free(&pkCtx);
-    }
-
-    if (err != 0) {
-        cominitErrPrint("Could not hash the rootfs public key");
-    }
-
-    if (rc == TSS2_RC_SUCCESS) {
-        result = EXIT_SUCCESS;
     }
 
     return result;
@@ -850,36 +726,28 @@ bool cominitTpmExtendEnabled(cominitCliArgs_t *argCtx) {
 cominitTpmState_t cominitTpmProtectData(cominitTpmContext_t *tpmCtx, cominitCliArgs_t *argCtx) {
     cominitBlobState_t blobState = BlobNotFound;
     cominitTpmState_t tpmState = TpmFailure;
-    TPM2B_DIGEST *keyToSeal = NULL;
-    TPM2B_DIGEST *unsealedKey = calloc(1, sizeof(TPM2B_DIGEST));
 
     blobState = cominitTpmSetupBlob(argCtx);
 
     switch (blobState) {
         case BlobIsEmpty:
             cominitInfoPrint("Blob is empty: sealing");
-            int result = cominitTpmCreateKey(tpmCtx->esysCtx, &keyToSeal);
-            if (result != EXIT_SUCCESS) {
-                cominitErrPrint("Could not generate key.");
-            } else {
-                tpmState = cominitTpmSealBlob(tpmCtx->esysCtx, argCtx, keyToSeal);
-                if (tpmState == Sealed) {
-                    cominitTpmDeleteKey(&keyToSeal);
-                    tpmState = cominitTpmUnsealBlob(tpmCtx->esysCtx, argCtx, unsealedKey);
-                }
-                if (tpmState == Unsealed) {
-                    if (cominitTpmSetupSecureStorage(argCtx, unsealedKey, true) != EXIT_SUCCESS) {
-                        cominitErrPrint("Secure storage could not be set up.");
-                        tpmState = TpmFailure;
-                    }
+            tpmState = cominitTpmSealBlob(tpmCtx->esysCtx, argCtx);
+            if (tpmState == Sealed) {
+                tpmState = cominitTpmUnsealBlob(tpmCtx->esysCtx, argCtx);
+            }
+            if (tpmState == Unsealed) {
+                if (cominitTpmSetupSecureStorage(argCtx, true) != EXIT_SUCCESS) {
+                    cominitErrPrint("Secure storage could not be set up.");
+                    tpmState = TpmFailure;
                 }
             }
             break;
         case BlobExists:
             cominitInfoPrint("Blob exists: unsealing");
-            tpmState = cominitTpmUnsealBlob(tpmCtx->esysCtx, argCtx, unsealedKey);
+            tpmState = cominitTpmUnsealBlob(tpmCtx->esysCtx, argCtx);
             if (tpmState == Unsealed) {
-                if (cominitTpmSetupSecureStorage(argCtx, unsealedKey, false) != EXIT_SUCCESS) {
+                if (cominitTpmSetupSecureStorage(argCtx, false) != EXIT_SUCCESS) {
                     cominitErrPrint("Secure storage could not be set up.");
                     tpmState = TpmFailure;
                 }
@@ -891,9 +759,6 @@ cominitTpmState_t cominitTpmProtectData(cominitTpmContext_t *tpmCtx, cominitCliA
             tpmState = TpmFailure;
             break;
     }
-
-    cominitTpmDeleteKey(&keyToSeal);
-    cominitTpmDeleteKey(&unsealedKey);
 
     cominitTpmUnmountBlob(argCtx->devNodeBlob);
 

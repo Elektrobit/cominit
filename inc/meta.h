@@ -75,18 +75,6 @@ typedef struct cominitRfsMetaData_t {
  */
 int cominitLoadVerifyMetadata(cominitRfsMetaData_t *meta, const char *keyfile);
 /**
- * Get the size of a partition.
- *
- * Uses the BLKGETSIZE64 ioctl() to return the size in Bytes. The given file descriptor must be opened and associated
- * with a partition block device.
- *
- * @param partSize  Return pointer for the size in Bytes.
- * @param fd         The partition file descriptor.
- *
- * @return  0 on success, -1 otherwise
- */
-int cominitGetPartSize(uint64_t *partSize, int fd);
-/**
  * Convert a series of Bytes to a hexadecimal string representation.
  *
  * Will read \a n Bytes from src and write \f$ 2n+1 \f$ (including the null-Byte) characters to dest. Hexadecimal digits
