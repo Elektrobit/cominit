@@ -1,0 +1,25 @@
+From 59792d1ee51897d734f52e79364d1efff37bc609 Mon Sep 17 00:00:00 2001
+From: Armin Butscher <armin.butscher@emlix.com>
+Date: Wed, 24 Sep 2025 10:01:09 +0200
+Subject: [PATCH] ci: add patch for new gcc version in Ubuntu 24.04
+
+---
+ src/automount.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/automount.c b/src/automount.c
+index 2a1dc4a..9d4a889 100644
+--- a/src/automount.c
++++ b/src/automount.c
+@@ -234,7 +234,7 @@ int cominitAutomountFindPartitionOnDisk(cominitGPTDisk_t *gptDisk, const char *g
+ int cominitAutomountFindPartition(cominitGPTDisk_t *gptDisk, const char *guidType, char *partitionName,
+                                   size_t partitionNameSize) {
+     int result = EXIT_FAILURE;
+-    if (gptDisk == NULL || gptDisk->diskName == NULL || guidType == NULL || partitionName == NULL ||
++    if (gptDisk == NULL || guidType == NULL || partitionName == NULL ||
+         partitionNameSize == 0) {
+         cominitErrPrint("Invalid parameters");
+     } else {
+-- 
+2.43.0
+
