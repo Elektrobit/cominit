@@ -2,6 +2,12 @@ cominit (0.11.1-1) unstable; urgency=medium
 
   * New upstream tag 0.11.1
 
+ -- Armin Butscher <armin.butscher@emlix.com>  Wed, 24 Sep 2025 12:19:42 +0000
+
+cominit (0.11.1-1) unstable; urgency=medium
+
+  * New upstream tag 0.11.1
+
  -- Armin Butscher <armin.butscher@emlix.com>  Wed, 24 Sep 2025 08:55:46 +0000
 
 cominit (0.11.1-1) unstable; urgency=medium
