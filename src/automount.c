@@ -234,8 +234,7 @@ int cominitAutomountFindPartitionOnDisk(cominitGPTDisk_t *gptDisk, const char *g
 int cominitAutomountFindPartition(cominitGPTDisk_t *gptDisk, const char *guidType, char *partitionName,
                                   size_t partitionNameSize) {
     int result = EXIT_FAILURE;
-    if (gptDisk == NULL || gptDisk->diskName == NULL || guidType == NULL || partitionName == NULL ||
-        partitionNameSize == 0) {
+    if (gptDisk == NULL || guidType == NULL || partitionName == NULL || partitionNameSize == 0) {
         cominitErrPrint("Invalid parameters");
     } else {
         DIR *d = opendir("/dev");
