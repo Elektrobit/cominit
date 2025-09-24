@@ -1,0 +1,27 @@
+From 3e436dead512bb247a9aa255f7c917bc7bf8dda5 Mon Sep 17 00:00:00 2001
+From: Marian Jacobs <mjacobs@emlix.com>
+Date: Wed, 24 Sep 2025 13:09:38 +0200
+Subject: [PATCH] fix(crypto): use wrapper for mbedtls_sha256_ret to handle
+ mbedtls versioning
+
+---
+ src/crypto.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/crypto.c b/src/crypto.c
+index 0355107..db01e39 100644
+--- a/src/crypto.c
++++ b/src/crypto.c
+@@ -139,7 +139,8 @@ static int cominitCryptoCreateUniqueString(unsigned char *uniqueString) {
+         if (fgets(buffer, sizeof(buffer), file)) {
+             size_t n = strcspn(buffer, "\r\n");
+             buffer[n] = '\0';
+-            if (mbedtls_sha256_ret((const unsigned char *)buffer, strlen(buffer), uniqueString, 0) == 0) {
++            int err = cominitComputeSHA256((const unsigned char *)buffer, strlen(buffer), uniqueString);
++            if (err == 0) {
+                 result = EXIT_SUCCESS;
+             }
+         }
+-- 
+2.43.0
+
