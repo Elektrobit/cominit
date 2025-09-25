@@ -15,13 +15,11 @@ add_executable(
   cominit.c
   common.c
   crypto.c
-  cryptsetup.c
   keyring.c
   minsetup.c
   meta.c
   dmctl.c
   output.c
-  securememory.c
   subprocess.c
   ${CMAKE_CURRENT_BINARY_DIR}/version.c
 )
@@ -51,7 +49,7 @@ if(USE_TPM)
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(TSS2_TCTILDR REQUIRED tss2-tctildr)
 
-  target_sources(cominit PRIVATE tpm.c)
+  target_sources(cominit PRIVATE tpm.c securememory.c cryptsetup.c)
 
   target_include_directories(
     cominit

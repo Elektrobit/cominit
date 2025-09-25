@@ -130,10 +130,12 @@ bool cominitDiscoverRootfs(cominitCliArgs_t *argCtx, cominitRfsMetaData_t *rfsMe
  */
 int main(int argc, char *argv[], char *envp[]) {
     cominitCliArgs_t argCtx = {.visibleLogLevel = COMINIT_LOG_LEVEL_INVALID,
+#ifdef COMINIT_USE_TPM
                                .pcrSet = false,
                                .pcrSealCount = 0,
                                .devNodeBlob[0] = '\0',
                                .devNodeCrypt[0] = '\0',
+#endif
                                .devNodeRootFs[0] = '\0'};
     const char *argValue = NULL;
 
