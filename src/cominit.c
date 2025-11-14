@@ -25,6 +25,7 @@
 #include "common.h"
 #include "minsetup.h"
 #include "output.h"
+#include "subprocess.h"
 #include "version.h"
 
 /**
@@ -136,6 +137,7 @@ int main(int argc, char *argv[], char *envp[]) {
                                .devNodeBlob[0] = '\0',
                                .devNodeCrypt[0] = '\0',
 #endif
+                               .enableSelinux = false,
                                .devNodeRootFs[0] = '\0'};
     const char *argValue = NULL;
 
@@ -160,6 +162,12 @@ int main(int argc, char *argv[], char *envp[]) {
                 continue;
             }
         }
+
+        if (cominitParamCheck(argv[i], "selinux", "cominit.selinux")) {
+            argCtx.enableSelinux = true;
+            cominitInfoPrint("Selinux is enabled, corresponding setup will be included");
+        }
+
 #ifdef COMINIT_USE_TPM
         if ((argValue = cominitParseArgValue(argv[i], "pcrExtend", "cominit.pcrExtend")) != NULL) {
             if (cominitTpmParsePcrIndex(&argCtx, argValue) == EXIT_FAILURE) {
@@ -197,6 +205,21 @@ int main(int argc, char *argv[], char *envp[]) {
     if (cominitSetupSysfiles() == -1) {
         cominitErrPrint("Could not setup minimal system/device files. Init failed.");
         goto rescue;
+    }
+
+    if (argCtx.enableSelinux) {
+        if (cominitSetupSysSelinuxfiles() == -1) {
+            cominitErrPrint("Could not add selinuxfs to minimal system/device files.");
+            cominitErrPrint("Installed Policies will not be loaded ");
+        } else {
+            /* Load installed Selinux Policies */
+            cominitInfoPrint("Load Installed Selinux Policies...");
+            char *argv[] = {"/sbin/load_policy", "-i", NULL};
+            char *env[] = {NULL};
+            if (cominitSubprocessSpawn(argv[0], argv, env) != EXIT_SUCCESS) {
+                cominitErrPrint("Loading Selinux policies failed ");
+            }
+        }
     }
 
 /* In case we are built to emulate a HSM, enroll the standard development key for dm-integrity HMAC in the Kernel

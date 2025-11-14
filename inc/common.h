@@ -26,6 +26,7 @@ typedef struct cominitCliArgs {
     char devNodeBlob[COMINIT_ROOTFS_DEV_PATH_MAX];   ///< Holds the blob device node.
     char devNodeCrypt[COMINIT_ROOTFS_DEV_PATH_MAX];  ///< Holds the crypt device node.
 #endif
+    bool enableSelinux;                               ///< Flag to check whether selinux is enabled.
     char devNodeRootFs[COMINIT_ROOTFS_DEV_PATH_MAX];  ///< Holds the Rootfs device node.
     cominitLogLevelE_t visibleLogLevel;               ///< The visible log level.
 } cominitCliArgs_t;
