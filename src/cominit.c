@@ -4,11 +4,13 @@
  * @brief Main program implementation of Compact Init (cominit).
  */
 #include <errno.h>
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -45,6 +47,8 @@
  */
 #define COMINIT_ROOT_WAIT_INTERVAL_MILLIS 500uL
 
+#define COMINIT_SELINUX_POLICY_FILE "/etc/selinux/baseos-selinux-cominit-policy/policy/policy.33"
+#define ROOTFS_SELINUX_POLICY_FILE "/newroot/etc/selinux/baseos-selinux-policy/policy/policy.33"
 /**
  * Checks if a string is equal to at least one of two comparison literals.
  *
@@ -117,7 +121,13 @@ static const char *cominitParseArgValue(const char *arg, const char *param1, con
  * @return  true on success, false otherwise
  */
 bool cominitDiscoverRootfs(cominitCliArgs_t *argCtx, cominitRfsMetaData_t *rfsMeta, cominitGPTDisk_t *gptDiskRoot);
-
+/**
+ * Load selinux policy file from corresponding path given.
+ *
+ * @param policyPath        path to binary policy file
+ * @return  true on success, false otherwise
+ */
+int cominitLoadSelinuxPolicy(const char *policyPath);
 /**
  * Compact Init main function.
  *
@@ -205,21 +215,6 @@ int main(int argc, char *argv[], char *envp[]) {
     if (cominitSetupSysfiles() == -1) {
         cominitErrPrint("Could not setup minimal system/device files. Init failed.");
         goto rescue;
-    }
-
-    if (argCtx.enableSelinux) {
-        if (cominitSetupSysSelinuxfiles() == -1) {
-            cominitErrPrint("Could not add selinuxfs to minimal system/device files.");
-            cominitErrPrint("Installed Policies will not be loaded ");
-        } else {
-            /* Load installed Selinux Policies */
-            cominitInfoPrint("Load Installed Selinux Policies...");
-            char *argv[] = {"/sbin/load_policy", "-i", NULL};
-            char *env[] = {NULL};
-            if (cominitSubprocessSpawn(argv[0], argv, env) != EXIT_SUCCESS) {
-                cominitErrPrint("Loading Selinux policies failed ");
-            }
-        }
     }
 
 /* In case we are built to emulate a HSM, enroll the standard development key for dm-integrity HMAC in the Kernel
@@ -330,8 +325,28 @@ int main(int argc, char *argv[], char *envp[]) {
     }
 #endif
 
+    if (argCtx.enableSelinux) {
+        if (cominitSetupSysSelinuxfiles() == -1) {
+            cominitErrPrint("Could not add selinuxfs to minimal system/device files.");
+            cominitErrPrint("Installed Policies will not be loaded ");
+        } else {
+            /* Load installed Selinux Policies */
+            cominitInfoPrint("Load Installed Selinux Policies...");
+            if (cominitLoadSelinuxPolicy(COMINIT_SELINUX_POLICY_FILE) != EXIT_SUCCESS) {
+                cominitErrPrint("Loading Policy File from initrd Failed");
+            }
+            cominitInfoPrint("Policy from initrd Loaded");
+            if (cominitLoadSelinuxPolicy(ROOTFS_SELINUX_POLICY_FILE) != EXIT_SUCCESS) {
+                cominitErrPrint("Loading Policy File from rootfs Failed");
+            }
+            cominitInfoPrint("Policy from rootfs Loaded");
+        }
+    }
     /* Housekeeping/cleanup before switching to rootfs. For now, just initiate a lazy umount of /dev. */
     cominitInfoPrint("Unmounting system directories...");
+    if (cominitCleanupSelinuxfiles() == -1) {
+        cominitInfoPrint("Warning: Could not unmount all selinux files.");
+    }
     if (cominitCleanupSysfiles() == -1) {
         cominitInfoPrint("Warning: Could not unmount all system/device files.");
     }
@@ -477,4 +492,48 @@ bool cominitDiscoverRootfs(cominitCliArgs_t *argCtx, cominitRfsMetaData_t *rfsMe
     }
 
     return rootFound;
+}
+
+int cominitLoadSelinuxPolicy(const char *policyPath) {
+    int result = EXIT_FAILURE;
+    void *map, *data;
+    struct stat sb;
+    size_t size;
+    int fd, lfd = -1;
+    const char *loadPath = "/sys/fs/selinux/load";
+
+    if (policyPath == NULL) {
+        cominitErrPrint("Invalid parameters");
+    } else {
+        fd = open(policyPath, O_RDONLY | O_CLOEXEC);
+        if (fd < 0) {
+            cominitErrnoPrint("Opening policy path failed");
+        } else {
+            if (fstat(fd, &sb) < 0) {
+                cominitErrPrint("fstat failed");
+            } else {
+                size = sb.st_size;
+                data = map = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+                if (map == MAP_FAILED) {
+                    cominitErrPrint("mapping file failed");
+                } else {
+                    lfd = open(loadPath, O_RDWR | O_CLOEXEC);
+                    if (lfd < 0) {
+                        cominitErrPrint("opening policy load path failed");
+                    } else {
+                        if (write(lfd, data, size) < 0) {
+                            cominitErrPrint("writing policy to load path failed");
+                        } else {
+                            result = EXIT_SUCCESS;
+                        }
+                        close(lfd);
+                    }
+                    munmap(map, sb.st_size);
+                }
+            }
+            close(fd);
+        }
+    }
+
+    return result;
 }

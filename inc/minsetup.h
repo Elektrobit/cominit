@@ -41,6 +41,15 @@ int cominitSetupSysSelinuxfiles(void);
 int cominitCleanupSysfiles(void);
 
 /**
+ * Cleanup initramfs selinux environment.
+ *
+ * Meant to clean the selinux environment
+ *
+ * @return 0 on success, -1 on error
+ */
+int cominitCleanupSelinuxfiles(void);
+
+/**
  * Mount rootfs at /newroot.
  *
  * Will mount the rootfs partition according to the options set in \a rfsMeta. Will call cominitSetupDmDevice) if

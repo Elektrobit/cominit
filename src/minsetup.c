@@ -122,6 +122,11 @@ int cominitCleanupSysfiles(void) {
     return 0;
 }
 
+int cominitCleanupSelinuxfiles(void) {
+    cominitFailIf(umount2("/sys/fs/selinux", MNT_DETACH) == -1);
+    return 0;
+}
+
 int cominitSetupRootfs(cominitRfsMetaData_t *rfsMeta) {
     if (rfsMeta == NULL) {
         cominitErrPrint("Input parameters must not be NULL.");
