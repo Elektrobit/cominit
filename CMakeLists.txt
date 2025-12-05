@@ -22,6 +22,14 @@ set(FAKE_HSM_KEY_DIR
     "/etc/fake_hsm"
     CACHE STRING
     "The directory in initramfs where the keyfiles to enroll are located.")
+set(INITRD_SELINUX_POLICY_PATH
+    "/etc/selinux/targeted/policy/policy.33"
+    CACHE STRING
+    "The path in initrd where selinux policy file is located")
+set(ROOTFS_SELINUX_POLICY_PATH
+    "/newroot/etc/selinux/targeted/policy/policy.33"
+    CACHE STRING
+    "The path in rootfs where selinux policy file is located")
 
 set(COMINIT_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
 set(COMINIT_VERSION_MINOR ${PROJECT_VERSION_MINOR})

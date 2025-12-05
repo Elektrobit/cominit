@@ -27,7 +27,6 @@
 #include "common.h"
 #include "minsetup.h"
 #include "output.h"
-#include "subprocess.h"
 #include "version.h"
 
 /**
@@ -47,8 +46,6 @@
  */
 #define COMINIT_ROOT_WAIT_INTERVAL_MILLIS 500uL
 
-#define COMINIT_SELINUX_POLICY_FILE "/etc/selinux/baseos-selinux-cominit-policy/policy/policy.33"
-#define ROOTFS_SELINUX_POLICY_FILE "/newroot/etc/selinux/baseos-selinux-policy/policy/policy.33"
 /**
  * Checks if a string is equal to at least one of two comparison literals.
  *
@@ -125,9 +122,17 @@ bool cominitDiscoverRootfs(cominitCliArgs_t *argCtx, cominitRfsMetaData_t *rfsMe
  * Load selinux policy file from corresponding path given.
  *
  * @param policyPath        path to binary policy file
- * @return  true on success, false otherwise
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
  */
 int cominitLoadSelinuxPolicy(const char *policyPath);
+/**
+ * Set Selinux Mode to enforcing or permissive
+ *
+ * @param value        selinux mode value. 1 for enforcing, 0 for permissive.
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
+ */
+int cominitSetSelinuxMode(int value);
+
 /**
  * Compact Init main function.
  *
@@ -148,6 +153,7 @@ int main(int argc, char *argv[], char *envp[]) {
                                .devNodeCrypt[0] = '\0',
 #endif
                                .enableSelinux = false,
+                               .enableEnforceMode = false,
                                .devNodeRootFs[0] = '\0'};
     const char *argValue = NULL;
 
@@ -176,6 +182,11 @@ int main(int argc, char *argv[], char *envp[]) {
         if (cominitParamCheck(argv[i], "selinux", "cominit.selinux")) {
             argCtx.enableSelinux = true;
             cominitInfoPrint("Selinux is enabled, corresponding setup will be included");
+        }
+
+        if (cominitParamCheck(argv[i], "enforcing", "cominit.enforcing")) {
+            argCtx.enableEnforceMode = true;
+            cominitInfoPrint("Selinux is set to enforcing mode. Selinux should be enabled.");
         }
 
 #ifdef COMINIT_USE_TPM
@@ -331,18 +342,30 @@ int main(int argc, char *argv[], char *envp[]) {
             cominitErrPrint("Installed Policies will not be loaded ");
         } else {
             /* Load installed Selinux Policies */
-            cominitInfoPrint("Load Installed Selinux Policies...");
-            if (cominitLoadSelinuxPolicy(COMINIT_SELINUX_POLICY_FILE) != EXIT_SUCCESS) {
+            cominitInfoPrint("Load Selinux Policies...");
+            if (cominitLoadSelinuxPolicy(INITRD_SELINUX_POLICY_PATH) != EXIT_SUCCESS) {
                 cominitErrPrint("Loading Policy File from initrd Failed");
+            } else {
+                cominitInfoPrint("Policy from initrd Loaded");
             }
-            cominitInfoPrint("Policy from initrd Loaded");
-            if (cominitLoadSelinuxPolicy(ROOTFS_SELINUX_POLICY_FILE) != EXIT_SUCCESS) {
+            if (cominitLoadSelinuxPolicy(ROOTFS_SELINUX_POLICY_PATH) != EXIT_SUCCESS) {
                 cominitErrPrint("Loading Policy File from rootfs Failed");
+            } else {
+                cominitInfoPrint("Policy from rootfs Loaded");
             }
-            cominitInfoPrint("Policy from rootfs Loaded");
+            if (argCtx.enableEnforceMode) {
+                cominitInfoPrint("Setting Selinux Mode To Enforcing");
+                int mode = 1;
+                if (cominitSetSelinuxMode(mode) != EXIT_SUCCESS) {
+                    cominitErrPrint("Setting Selinux Enforcing Mode Failed");
+                } else {
+                    cominitInfoPrint("Selinux Set to Enforcing Mode");
+                }
+            }
         }
     }
-    /* Housekeeping/cleanup before switching to rootfs. For now, just initiate a lazy umount of /dev. */
+
+    /* Housekeeping/cleanup before switching to rootfs. */
     cominitInfoPrint("Unmounting system directories...");
     if (cominitCleanupSelinuxfiles() == -1) {
         cominitInfoPrint("Warning: Could not unmount all selinux files.");
@@ -496,9 +519,9 @@ bool cominitDiscoverRootfs(cominitCliArgs_t *argCtx, cominitRfsMetaData_t *rfsMe
 
 int cominitLoadSelinuxPolicy(const char *policyPath) {
     int result = EXIT_FAILURE;
-    void *map, *data;
-    struct stat sb;
-    size_t size;
+    void *map = NULL, *data = NULL;
+    struct stat sb = {0};
+    size_t size = 0;
     int fd, lfd = -1;
     const char *loadPath = "/sys/fs/selinux/load";
 
@@ -510,19 +533,19 @@ int cominitLoadSelinuxPolicy(const char *policyPath) {
             cominitErrnoPrint("Opening policy path failed");
         } else {
             if (fstat(fd, &sb) < 0) {
-                cominitErrPrint("fstat failed");
+                cominitErrnoPrint("fstat failed");
             } else {
                 size = sb.st_size;
                 data = map = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
                 if (map == MAP_FAILED) {
-                    cominitErrPrint("mapping file failed");
+                    cominitErrnoPrint("mapping file failed");
                 } else {
                     lfd = open(loadPath, O_RDWR | O_CLOEXEC);
                     if (lfd < 0) {
-                        cominitErrPrint("opening policy load path failed");
+                        cominitErrnoPrint("opening policy load path failed");
                     } else {
                         if (write(lfd, data, size) < 0) {
-                            cominitErrPrint("writing policy to load path failed");
+                            cominitErrnoPrint("writing policy to load path failed");
                         } else {
                             result = EXIT_SUCCESS;
                         }
@@ -533,6 +556,28 @@ int cominitLoadSelinuxPolicy(const char *policyPath) {
             }
             close(fd);
         }
+    }
+
+    return result;
+}
+
+int cominitSetSelinuxMode(int value) {
+    int result = EXIT_FAILURE;
+    const char *enforcePath = "/sys/fs/selinux/enforce";
+    char buf[20];
+    int fd = -1;
+
+    fd = open(enforcePath, O_RDWR | O_CLOEXEC);
+    if (fd < 0) {
+        cominitErrnoPrint("opening enforce path failed");
+    } else {
+        snprintf(buf, sizeof(buf), "%d", value);
+        if (write(fd, buf, strlen(buf)) < 0) {
+            cominitErrnoPrint("writing mode value to enforce path failed");
+        } else {
+            result = EXIT_SUCCESS;
+        }
+        close(fd);
     }
 
     return result;
