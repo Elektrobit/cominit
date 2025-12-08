@@ -367,8 +367,10 @@ int main(int argc, char *argv[], char *envp[]) {
 
     /* Housekeeping/cleanup before switching to rootfs. */
     cominitInfoPrint("Unmounting system directories...");
-    if (cominitCleanupSelinuxfiles() == -1) {
-        cominitInfoPrint("Warning: Could not unmount all selinux files.");
+    if (argCtx.enableSelinux) {
+        if (cominitCleanupSelinuxfiles() == -1) {
+            cominitInfoPrint("Warning: Could not unmount all selinux files.");
+        }
     }
     if (cominitCleanupSysfiles() == -1) {
         cominitInfoPrint("Warning: Could not unmount all system/device files.");
