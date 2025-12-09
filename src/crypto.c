@@ -139,7 +139,8 @@ static int cominitCryptoCreateUniqueString(unsigned char *uniqueString) {
         if (fgets(buffer, sizeof(buffer), file)) {
             size_t n = strcspn(buffer, "\r\n");
             buffer[n] = '\0';
-            if (mbedtls_sha256_ret((const unsigned char *)buffer, strlen(buffer), uniqueString, 0) == 0) {
+            int err = cominitComputeSHA256((const unsigned char *)buffer, strlen(buffer), uniqueString);
+            if (err == 0) {
                 result = EXIT_SUCCESS;
             }
         }

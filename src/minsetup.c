@@ -84,10 +84,46 @@ int cominitSetupSysfiles(void) {
     return 0;
 }
 
+/* Add selinux to the minimal initramfs environment. */
+int cominitSetupSysSelinuxfiles(void) {
+    if (mkdir("/sys", 0755) == -1) {
+        if (errno != EEXIST) {
+            cominitErrnoPrint("Could not create /sys directory: ");
+            return -1;
+        }
+    }
+    if (mkdir("/sys/fs", 0755) == -1) {
+        if (errno != EEXIST) {
+            cominitErrnoPrint("Could not create /sys/fs directory: ");
+            return -1;
+        }
+    }
+    if (mkdir("/sys/fs/selinux", 0755) == -1) {
+        if (errno != EEXIST) {
+            cominitErrnoPrint("Could not create /sys/fs/selinux directory: ");
+            return -1;
+        }
+    }
+    if (mount("none", "/sys/fs/selinux", "selinuxfs", MS_NODEV | MS_NOEXEC | MS_NOSUID, NULL) == -1) {
+        if (errno != EBUSY) {
+            cominitErrnoPrint("Could not mount selinuxfs.");
+            return -1;
+        }
+        cominitInfoPrint("/sys/fs/selinux is already mounted. Skipping.");
+    }
+
+    return 0;
+}
+
 /* Perform 'lazy' unmount of devtmpfs as it may be busy, this will result in a proper unmount during execve to rootfs
  * init at the latest. (Even if that wasn't the case remounting at /newroot/dev is not a problem) */
 int cominitCleanupSysfiles(void) {
     cominitFailIf(umount2("/dev", MNT_DETACH) == -1);
+    return 0;
+}
+
+int cominitCleanupSelinuxfiles(void) {
+    cominitFailIf(umount2("/sys/fs/selinux", MNT_DETACH) == -1);
     return 0;
 }
 

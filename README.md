@@ -68,7 +68,8 @@ The test results will be saved to `result/utest_report.txt`.
 ### General Description
 The resulting binary (`cominit`) expects to be run as the system init process out of an initramfs.
 Its purpose is to mount the rootfs partition, switch the root and start the rootfs init. The rootfs filesystem may
-be read-only or read-write using any filesystem supported by the Kernel in use.
+be read-only or read-write using any filesystem supported by the Kernel in use. If enabled the Selinux security polices
+when already installed, are loaded to provide correct security context for mounting rootfs and switching root.
 Continuous integrity checking is supported through dm-verity for read-only and dm-integrity for writable variants.
 
 If successful, `cominit`will clean up after itself and exec into the rootfs init
@@ -84,7 +85,12 @@ to the init process via Kernel command line as well, like so:
 rdinit=/path/to/cominit [OTHER_KERNEL_PARAMETERS] -- [COMINIT_ARGV1] [COMINIT_ARGV2] [...]
 ```
 
-`cominit` currently looks for an argument `root` or `cominit.rootfs` in its argument vector for the location of
+If `selinux` is enabled, `cominit` tries to load the selinux policies from default policy paths. The default policy paths
+can be changed by providing paths via optional compile flags `-DINITRD_SELINUX_POLICY_PATH` and `-DROOTFS_SELINUX_POLICY_PATH`.
+
+If `enforcing` is set, then `cominit` tries to set the selinux mode to enforcing. The `selinux` should be enabled for this.
+
+Then `cominit` currently looks for an argument `root` or `cominit.rootfs` in its argument vector for the location of
 the rootfs. `cominit` will mount and switch into the value of this argument (e.g. `root=/dev/sdxy`).
 If no valid argument provided `cominit` can detect the rootfs partition from it's GUID if GPT is used.
 See [Automount](#automount) for more information.

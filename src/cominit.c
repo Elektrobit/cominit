@@ -4,11 +4,13 @@
  * @brief Main program implementation of Compact Init (cominit).
  */
 #include <errno.h>
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -116,6 +118,20 @@ static const char *cominitParseArgValue(const char *arg, const char *param1, con
  * @return  true on success, false otherwise
  */
 bool cominitDiscoverRootfs(cominitCliArgs_t *argCtx, cominitRfsMetaData_t *rfsMeta, cominitGPTDisk_t *gptDiskRoot);
+/**
+ * Load selinux policy file from corresponding path given.
+ *
+ * @param policyPath        path to binary policy file
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
+ */
+int cominitLoadSelinuxPolicy(const char *policyPath);
+/**
+ * Set Selinux Mode to enforcing or permissive
+ *
+ * @param value        selinux mode value. 1 for enforcing, 0 for permissive.
+ * @return  EXIT_SUCCESS on success, EXIT_FAILURE otherwise
+ */
+int cominitSetSelinuxMode(int value);
 
 /**
  * Compact Init main function.
@@ -130,10 +146,14 @@ bool cominitDiscoverRootfs(cominitCliArgs_t *argCtx, cominitRfsMetaData_t *rfsMe
  */
 int main(int argc, char *argv[], char *envp[]) {
     cominitCliArgs_t argCtx = {.visibleLogLevel = COMINIT_LOG_LEVEL_INVALID,
+#ifdef COMINIT_USE_TPM
                                .pcrSet = false,
                                .pcrSealCount = 0,
                                .devNodeBlob[0] = '\0',
                                .devNodeCrypt[0] = '\0',
+#endif
+                               .enableSelinux = false,
+                               .enableEnforceMode = false,
                                .devNodeRootFs[0] = '\0'};
     const char *argValue = NULL;
 
@@ -158,6 +178,17 @@ int main(int argc, char *argv[], char *envp[]) {
                 continue;
             }
         }
+
+        if (cominitParamCheck(argv[i], "selinux", "cominit.selinux")) {
+            argCtx.enableSelinux = true;
+            cominitInfoPrint("Selinux is enabled, corresponding setup will be included");
+        }
+
+        if (cominitParamCheck(argv[i], "enforcing", "cominit.enforcing")) {
+            argCtx.enableEnforceMode = true;
+            cominitInfoPrint("Selinux is set to enforcing mode. Selinux should be enabled.");
+        }
+
 #ifdef COMINIT_USE_TPM
         if ((argValue = cominitParseArgValue(argv[i], "pcrExtend", "cominit.pcrExtend")) != NULL) {
             if (cominitTpmParsePcrIndex(&argCtx, argValue) == EXIT_FAILURE) {
@@ -305,8 +336,42 @@ int main(int argc, char *argv[], char *envp[]) {
     }
 #endif
 
-    /* Housekeeping/cleanup before switching to rootfs. For now, just initiate a lazy umount of /dev. */
+    if (argCtx.enableSelinux) {
+        if (cominitSetupSysSelinuxfiles() == -1) {
+            cominitErrPrint("Could not add selinuxfs to minimal system/device files.");
+            cominitErrPrint("Installed Policies will not be loaded ");
+        } else {
+            /* Load installed Selinux Policies */
+            cominitInfoPrint("Load Selinux Policies...");
+            if (cominitLoadSelinuxPolicy(INITRD_SELINUX_POLICY_PATH) != EXIT_SUCCESS) {
+                cominitErrPrint("Loading Policy File from initrd Failed");
+            } else {
+                cominitInfoPrint("Policy from initrd Loaded");
+            }
+            if (cominitLoadSelinuxPolicy(ROOTFS_SELINUX_POLICY_PATH) != EXIT_SUCCESS) {
+                cominitErrPrint("Loading Policy File from rootfs Failed");
+            } else {
+                cominitInfoPrint("Policy from rootfs Loaded");
+            }
+            if (argCtx.enableEnforceMode) {
+                cominitInfoPrint("Setting Selinux Mode To Enforcing");
+                int mode = 1;
+                if (cominitSetSelinuxMode(mode) != EXIT_SUCCESS) {
+                    cominitErrPrint("Setting Selinux Enforcing Mode Failed");
+                } else {
+                    cominitInfoPrint("Selinux Set to Enforcing Mode");
+                }
+            }
+        }
+    }
+
+    /* Housekeeping/cleanup before switching to rootfs. */
     cominitInfoPrint("Unmounting system directories...");
+    if (argCtx.enableSelinux) {
+        if (cominitCleanupSelinuxfiles() == -1) {
+            cominitInfoPrint("Warning: Could not unmount all selinux files.");
+        }
+    }
     if (cominitCleanupSysfiles() == -1) {
         cominitInfoPrint("Warning: Could not unmount all system/device files.");
     }
@@ -452,4 +517,70 @@ bool cominitDiscoverRootfs(cominitCliArgs_t *argCtx, cominitRfsMetaData_t *rfsMe
     }
 
     return rootFound;
+}
+
+int cominitLoadSelinuxPolicy(const char *policyPath) {
+    int result = EXIT_FAILURE;
+    void *map = NULL, *data = NULL;
+    struct stat sb = {0};
+    size_t size = 0;
+    int fd, lfd = -1;
+    const char *loadPath = "/sys/fs/selinux/load";
+
+    if (policyPath == NULL) {
+        cominitErrPrint("Invalid parameters");
+    } else {
+        fd = open(policyPath, O_RDONLY | O_CLOEXEC);
+        if (fd < 0) {
+            cominitErrnoPrint("Opening policy path failed");
+        } else {
+            if (fstat(fd, &sb) < 0) {
+                cominitErrnoPrint("fstat failed");
+            } else {
+                size = sb.st_size;
+                data = map = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+                if (map == MAP_FAILED) {
+                    cominitErrnoPrint("mapping file failed");
+                } else {
+                    lfd = open(loadPath, O_RDWR | O_CLOEXEC);
+                    if (lfd < 0) {
+                        cominitErrnoPrint("opening policy load path failed");
+                    } else {
+                        if (write(lfd, data, size) < 0) {
+                            cominitErrnoPrint("writing policy to load path failed");
+                        } else {
+                            result = EXIT_SUCCESS;
+                        }
+                        close(lfd);
+                    }
+                    munmap(map, sb.st_size);
+                }
+            }
+            close(fd);
+        }
+    }
+
+    return result;
+}
+
+int cominitSetSelinuxMode(int value) {
+    int result = EXIT_FAILURE;
+    const char *enforcePath = "/sys/fs/selinux/enforce";
+    char buf[20];
+    int fd = -1;
+
+    fd = open(enforcePath, O_RDWR | O_CLOEXEC);
+    if (fd < 0) {
+        cominitErrnoPrint("opening enforce path failed");
+    } else {
+        snprintf(buf, sizeof(buf), "%d", value);
+        if (write(fd, buf, strlen(buf)) < 0) {
+            cominitErrnoPrint("writing mode value to enforce path failed");
+        } else {
+            result = EXIT_SUCCESS;
+        }
+        close(fd);
+    }
+
+    return result;
 }

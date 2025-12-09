@@ -22,6 +22,15 @@
 int cominitSetupSysfiles(void);
 
 /**
+ * Add selinux filesystem in minimal setup.
+ *
+ * Include selinux filesystem to the minimal environment to load selinux policies in initramfs.
+ *
+ * @return 0 on success, -1 on error
+ */
+int cominitSetupSysSelinuxfiles(void);
+
+/**
  * Cleanup initramfs environment.
  *
  * Meant to clean the environment (mounts, temporary files) before changing the root directory to rootfs and exec-ing
@@ -30,6 +39,15 @@ int cominitSetupSysfiles(void);
  * @return 0 on success, -1 on error
  */
 int cominitCleanupSysfiles(void);
+
+/**
+ * Cleanup initramfs selinux environment.
+ *
+ * Meant to clean the selinux environment
+ *
+ * @return 0 on success, -1 on error
+ */
+int cominitCleanupSelinuxfiles(void);
 
 /**
  * Mount rootfs at /newroot.

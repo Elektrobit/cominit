@@ -7,8 +7,10 @@
 #define __COMMON_H__
 
 #include <stdbool.h>
-#include <tss2/tss2_esys.h>
 
+#ifdef COMINIT_USE_TPM
+#include <tss2/tss2_esys.h>
+#endif
 #include "meta.h"
 #include "output.h"
 
@@ -16,15 +18,18 @@
  * Structure holding parsed options from argv.
  */
 typedef struct cominitCliArgs {
-    bool pcrSet;                               ///< Flag to check whether pcrIndex is set to a valid value.
-    unsigned long pcrIndex;                    ///< The index of the SHA-256 bank of the TPM.
-    int pcrSealCount;                          ///< The number of registers in the SHA-256 bank used for sealing.
-    unsigned long pcrSeal[TPM2_PT_PCR_COUNT];  ///< The list of registers in the SHA-256 bank used for sealing.
-    cominitLogLevelE_t visibleLogLevel;        ///< The visible log level.
-
+#ifdef COMINIT_USE_TPM
+    bool pcrSet;                                     ///< Flag to check whether pcrIndex is set to a valid value.
+    unsigned long pcrIndex;                          ///< The index of the SHA-256 bank of the TPM.
+    int pcrSealCount;                                ///< The number of registers in the SHA-256 bank used for sealing.
+    unsigned long pcrSeal[TPM2_PT_PCR_COUNT];        ///< The list of registers in the SHA-256 bank used for sealing.
+    char devNodeBlob[COMINIT_ROOTFS_DEV_PATH_MAX];   ///< Holds the blob device node.
+    char devNodeCrypt[COMINIT_ROOTFS_DEV_PATH_MAX];  ///< Holds the crypt device node.
+#endif
+    bool enableSelinux;                               ///< Flag to check whether selinux is enabled.
+    bool enableEnforceMode;                           ///< Flag to set selinux enforce mode.
     char devNodeRootFs[COMINIT_ROOTFS_DEV_PATH_MAX];  ///< Holds the Rootfs device node.
-    char devNodeBlob[COMINIT_ROOTFS_DEV_PATH_MAX];    ///< Holds the blob device node.
-    char devNodeCrypt[COMINIT_ROOTFS_DEV_PATH_MAX];   ///< Holds the crypt device node.
+    cominitLogLevelE_t visibleLogLevel;               ///< The visible log level.
 } cominitCliArgs_t;
 
 /**
